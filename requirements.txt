@@ -1,0 +1,13 @@
+# Kurulum sırası:
+#   1) source .venv/bin/activate
+#   2) torch'u önce, ayrıca kur:
+#        NVIDIA GPU (sürücü 550 / CUDA 12.4):
+#          pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+#        GPU yoksa:
+#          pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+#   3) pip install -r requirements.txt
+
+selenium==4.49.0
+protego==0.6.2
+beautifulsoup4==4.15.0
+sentence-transformers==6.0.1

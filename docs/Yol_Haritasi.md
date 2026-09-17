@@ -130,9 +130,11 @@ Büyük yatırımdan önce en riskli iki varsayım doğrulanır.
 - **Çıkış kriteri:** Scraping engelsiz çalışıyor ve model anlamlı sonuç veriyor. Değilse kategori/model kararı burada revize edilir.
 
 ### Aşama 1: Ortam, Git ve Senior Reviewer Agent — 🔄 Güncellendi
-- [ ] `requirements.txt` hazırla: fastapi, uvicorn, sqlalchemy, psycopg[binary], pgvector, alembic, pydantic-settings, selenium, protego, beautifulsoup4, sentence-transformers (torch'u önce `https://download.pytorch.org/whl/cu124` adresinden kur), httpx, pyjwt, passlib[bcrypt], anthropic, rich, ruff, bandit, pytest.
-- [ ] `git init` ve GitHub reposu oluştur.
-- [ ] `.gitignore` hazırla: `.venv`, `.env`, `data/raw_html/`, `__pycache__`, model cache.
+- [x] `requirements.txt` ilk sürümü: selenium, protego, beautifulsoup4, sentence-transformers (sürümleri sabitlenmiş). torch GPU/CPU'ya göre ayrı kurulur, nasıl kurulacağı dosyanın başında yazıyor. Aşağıdaki diğer paketler ihtiyaç duyuldukça eklenecek.
+- [ ] Eklenecek paketler: fastapi, uvicorn, sqlalchemy, psycopg[binary], pgvector, alembic, pydantic-settings, selenium, protego, beautifulsoup4, sentence-transformers (torch'u önce `https://download.pytorch.org/whl/cu124` adresinden kur), httpx, pyjwt, passlib[bcrypt], anthropic, rich, ruff, bandit, pytest.
+- [x] `git init`: yerel repo kuruldu, ilk commit `1367c72` (Aşama 0 kodları).
+- [ ] GitHub reposu oluştur (`gh` kurulu değil; web arayüzünden veya `gh` kurularak).
+- [x] `.gitignore` hazırla: `.venv/`, `.env`, `__pycache__/`, `poc/output/`, `data/raw_html/`. İndirilen veri repoya girmez ("veri yeniden yayınlanmaz" kuralı). Model önbelleği `~/.cache` altında olduğu için zaten proje dışında.
 - [ ] `.env.example` hazırla: `DATABASE_URL`, `JWT_SECRET`, `ANTHROPIC_API_KEY`, `REVIEWER_MODEL`.
 - [ ] `agents/review_guidelines.md` yaz. Projeye özel kurallar:
   - kod içinde gizli anahtar olmaz
