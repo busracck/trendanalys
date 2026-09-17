@@ -134,7 +134,7 @@ Büyük yatırımdan önce en riskli iki varsayım doğrulanır.
 - [ ] Eklenecek paketler: fastapi, uvicorn, sqlalchemy, psycopg[binary], pgvector, alembic, pydantic-settings, selenium, protego, beautifulsoup4, sentence-transformers (torch'u önce `https://download.pytorch.org/whl/cu124` adresinden kur), httpx, pyjwt, passlib[bcrypt], anthropic, rich, ruff, bandit, pytest.
 - [x] `git init`: yerel repo kuruldu, ilk commit `1367c72` (Aşama 0 kodları).
 - [x] GitHub reposu: https://github.com/busracck/trendanalys (public). Giriş `gh auth login` ile yapıldı, `main` dalı `origin/main`'i takip ediyor.
-- [ ] `README.md` yaz: proje amacı, kurulum ve "veri repoda yok" notu.
+- [x] `README.md` ilk sürümü: amaç, Aşama 0 sonuçları, kurulum, `poc/` scriptlerinin sırası, veri ve etik notları. Ayrıntılı sürümü Aşama 7'de yazılacak.
 - [x] `.gitignore` hazırla: `.venv/`, `.env`, `__pycache__/`, `poc/output/`, `data/raw_html/`. İndirilen veri repoya girmez ("veri yeniden yayınlanmaz" kuralı). Model önbelleği `~/.cache` altında olduğu için zaten proje dışında.
 - [ ] `.env.example` hazırla: `DATABASE_URL`, `JWT_SECRET`, `ANTHROPIC_API_KEY`, `REVIEWER_MODEL`.
 - [ ] `agents/review_guidelines.md` yaz. Projeye özel kurallar:
