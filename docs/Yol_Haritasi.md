@@ -22,7 +22,7 @@ Sonuçlar **web arayüzünde** görüntülenir.
 | Embedding modeli | `BAAI/bge-m3` (çok dilli, 1024 boyut, 8192 token). Adım 0.4'teki testle seçildi, yedek: `intfloat/multilingual-e5-base` |
 | Arama | Hibrit: pgvector cosine (`<=>`) + PostgreSQL full-text (`turkish`) → RRF birleştirme |
 | Hava durumu | Open-Meteo (ücretsiz, anahtarsız) + 81 il koordinat JSON'u |
-| Reviewer Agent | ruff + bandit → Claude API (`git diff` + `review_guidelines.md`) |
+| Reviewer Agent | ruff + bandit → Claude API (`git diff` + `review_guidelines.md`). 17 Eylül 2026'da ertelendi: Aşama 5'ten sonra yazılacak. |
 
 ## Kısıtlar ve tespitler
 1. **Trendyol robots.txt** (15 Eylül 2026'da ham dosyadan doğrulandı)
@@ -45,9 +45,10 @@ Sonuçlar **web arayüzünde** görüntülenir.
 3. **Robots kontrolü:** Python'un `urllib.robotparser` modülü `*` joker karakterlerini desteklemiyor. Trendyol'un kuralları joker karakterli olduğu için **`protego`** kütüphanesi kullanılacak.
 4. **Mesafe operatörü:** Normalize edilmiş vektörlerle `<->` (L2) yerine `<=>` (cosine) ve HNSW index kullanılacak.
 5. **Makine:**
-   - Proje `.venv` ortamı **Python 3.13.5** ile kurulu (sistem `python3`). PostgreSQL 17 kurulu.
+   - Proje `.venv` ortamı **Python 3.13.5** ile kurulu (sistem `python3`).
+   - **PostgreSQL 17.10** çalışıyor (küme `main`, port 5432). `kitana` sistem kullanıcısı için veritabanı rolü yok. Yönetici işlemleri `sudo -u postgres ...` ile yapılır.
    - Paket kurmadan önce ortamı aktif et: `source .venv/bin/activate`. Aktif değilse Debian sistem `pip`'ini engeller (`externally-managed-environment`).
-   - **pgvector kurulu değil:** `sudo apt install postgresql-17-pgvector`
+   - **pgvector kurulu değil:** `sudo apt install postgresql-17-pgvector` (Debian paketi 0.8.0)
    - **GPU:** GeForce GTX 1650 Ti (4 GB), sürücü 550.163.01. 14 Eylül'deki ilk kontrolde `nvidia-smi` sürücüye bağlanamamıştı, 17 Eylül'de çalışıyor. Embedding'ler GPU'da hesaplanabilir; ~1500 ürün için CPU da yeterli.
 6. **Etik ve KVKK:**
    - istekler arası 4-8 sn bekleme
@@ -129,42 +130,41 @@ Büyük yatırımdan önce en riskli iki varsayım doğrulanır.
 - ✅ **Aşama 0 tamamlandı (17 Eylül 2026):** scraping engelsiz çalışıyor ve seçilen model anlamlı sonuç veriyor.
 - **Çıkış kriteri:** Scraping engelsiz çalışıyor ve model anlamlı sonuç veriyor. Değilse kategori/model kararı burada revize edilir.
 
-### Aşama 1: Ortam, Git ve Senior Reviewer Agent — 🔄 Güncellendi
-- [x] `requirements.txt` ilk sürümü: selenium, protego, beautifulsoup4, sentence-transformers (sürümleri sabitlenmiş). torch GPU/CPU'ya göre ayrı kurulur, nasıl kurulacağı dosyanın başında yazıyor. Aşağıdaki diğer paketler ihtiyaç duyuldukça eklenecek.
-- [ ] Eklenecek paketler: fastapi, uvicorn, sqlalchemy, psycopg[binary], pgvector, alembic, pydantic-settings, selenium, protego, beautifulsoup4, sentence-transformers (torch'u önce `https://download.pytorch.org/whl/cu124` adresinden kur), httpx, pyjwt, passlib[bcrypt], anthropic, rich, ruff, bandit, pytest.
+### Aşama 1: Ortam ve Git — ✅ Tamamlandı (Reviewer Agent ertelendi)
+- [x] `requirements.txt` ilk sürümü: selenium, protego, beautifulsoup4, sentence-transformers (sürümleri sabitlenmiş). torch GPU/CPU'ya göre ayrı kurulur, nasıl kurulacağı dosyanın başında yazıyor.
+- Diğer paketler ilgili aşamada eklenir: fastapi, uvicorn, sqlalchemy, psycopg[binary], pgvector, alembic, pydantic-settings, httpx, pyjwt, passlib[bcrypt], anthropic, rich, ruff, bandit, pytest.
 - [x] `git init`: yerel repo kuruldu, ilk commit `1367c72` (Aşama 0 kodları).
 - [x] GitHub reposu: https://github.com/busracck/trendanalys (public). Giriş `gh auth login` ile yapıldı, `main` dalı `origin/main`'i takip ediyor.
 - [x] `README.md` ilk sürümü: amaç, Aşama 0 sonuçları, kurulum, `poc/` scriptlerinin sırası, veri ve etik notları. Ayrıntılı sürümü Aşama 7'de yazılacak.
 - [x] `.gitignore` hazırla: `.venv/`, `.env`, `__pycache__/`, `poc/output/`, `data/raw_html/`. İndirilen veri repoya girmez ("veri yeniden yayınlanmaz" kuralı). Model önbelleği `~/.cache` altında olduğu için zaten proje dışında.
-- [ ] `.env.example` hazırla: `DATABASE_URL`, `JWT_SECRET`, `ANTHROPIC_API_KEY`, `REVIEWER_MODEL`.
-- [ ] `agents/review_guidelines.md` yaz. Projeye özel kurallar:
-  - kod içinde gizli anahtar olmaz
-  - SQL string birleştirme yapılmaz
-  - scraper rate limiter ve robots kontrolünü atlamaz
-  - endpoint'lerde `response_model` kullanılır
-  - model her istekte yeniden yüklenmez
-- [ ] `agents/reviewer.py` yaz:
-  1. `git diff --cached` veya `--range main...HEAD` ile diff'i al.
-  2. `ruff` ve `bandit` çalıştır.
-  3. Diff + guidelines + lint bulgularını Claude API'ye gönder. Model `REVIEWER_MODEL` ile ayarlanır, varsayılan `claude-sonnet-5`. Büyük diff'leri dosya bazında böl.
-  4. Yapılandırılmış çıktı al: `severity: blocker|major|minor`, dosya, satır, mesaj.
-  5. Sonucu `rich` ile renkli olarak terminale yaz.
-  6. `blocker` varsa çıkış kodu 1 döndür. API anahtarı yoksa sadece uyarı ver.
-- [ ] `.pre-commit-config.yaml` hazırla: ruff, ardından local hook `python agents/reviewer.py --staged`.
+- ⏸️ **Ertelendi (17 Eylül 2026):** Sistem henüz uçtan uca çalışmıyordu ve incelenecek gerçek kod azdı. Önce arama sistemi çalıştırılacak.
+  - `.env.example` → Adım 2.3
+  - Reviewer Agent maddeleri → Aşama 5'ten sonraki **Ara Aşama**
 
 ### Aşama 2: Veritabanı ve Vektör Mimarisi — 🔄 Güncellendi
-- [ ] `sudo apt install postgresql-17-pgvector`
-- [ ] Alembic kur. İlk migrasyonda `CREATE EXTENSION IF NOT EXISTS vector;` çalıştır.
-- [ ] SQLAlchemy modellerini yaz:
-  - `User`: id, email, password_hash, default_city, created_at
-  - `Product`: id, trendyol_id (unique), url, name, brand, category, price, discounted_price, rating, rating_count, description, `attributes` (JSONB), image_url, `search_text`, `embedding = mapped_column(Vector(1024))`, `tsv` (generated tsvector, `'turkish'`), content_hash, scraped_at, embedded_at
-  - `ReviewSnippet`: product_id, text, rating. **Kullanıcı adı yok.**
-  - `SearchHistory`, `Favorite`, `RevokedToken` (jti, expires_at)
-- [ ] Index'leri oluştur:
-  - `embedding` üzerinde HNSW (`vector_cosine_ops`)
-  - `tsv` üzerinde GIN
-  - `price` ve `category` üzerinde B-tree
-- [ ] Pydantic şemalarını `app/schemas.py` dosyasına yaz (`from_attributes=True`).
+- [ ] **Adım 2.1:** pgvector eklentisini kur: `sudo apt install postgresql-17-pgvector`
+- [ ] **Adım 2.2:** Projeye ayrı bir veritabanı kullanıcısı ve veritabanı aç (ikisinin adı da `trendanalys`).
+  - `vector` eklentisini yönetici (`postgres`) kullanıcısıyla bir kez aç. Uygulama kullanıcısına yönetici yetkisi verilmez.
+  - Bağlantıyı `psql -h localhost -U trendanalys -d trendanalys` ile test et.
+- [ ] **Adım 2.3:** `.env` ve `.env.example` hazırla.
+  - Şimdilik sadece `DATABASE_URL` (`postgresql+psycopg://kullanıcı:şifre@localhost:5432/trendanalys`).
+  - `.env` gerçek şifreyi içerir ve repoya girmez. `.env.example` şifresiz örnektir ve repoya girer.
+  - `JWT_SECRET` Aşama 5'te, `ANTHROPIC_API_KEY` ve `REVIEWER_MODEL` Ara Aşama'da eklenecek.
+- [ ] **Adım 2.4:** Paketleri kur ve sürümleriyle `requirements.txt` dosyasına ekle: sqlalchemy, psycopg[binary], pgvector, alembic, pydantic-settings.
+- [ ] **Adım 2.5:** `app/config.py` (pydantic-settings ile `.env` okuma) ve `app/db.py` (engine, session, `Base`) yaz.
+- [ ] **Adım 2.6:** `app/models.py` içine ürün tablolarını yaz:
+  - `Product`: id, trendyol_id (unique), url, name, brand, category, category_path, price, currency, color, gender, rating, rating_count, review_count, `attributes` (JSONB), image_url, `search_text`, `embedding = mapped_column(Vector(1024))`, `tsv` (generated tsvector, `'turkish'`), content_hash, scraped_at, embedded_at
+  - `ReviewSnippet`: product_id, text, rating, date. **Yorum yazanın adı yok (KVKK).**
+  - Alanlar `poc/output/products.json` çıktısına göre güncellendi. `description` yok, çünkü ld+json açıklaması sadece SEO metni.
+  - Kullanıcı tabloları (`User`, `SearchHistory`, `Favorite`, `RevokedToken`) Aşama 5'te, auth ile birlikte eklenecek.
+- [ ] **Adım 2.7:** Alembic kur, ilk migrasyonu yaz ve `alembic upgrade head` ile uygula:
+  - `CREATE EXTENSION IF NOT EXISTS vector;`
+  - `products` ve `review_snippets` tabloları
+  - index'ler: `embedding` üzerinde HNSW (`vector_cosine_ops`), `tsv` üzerinde GIN, `price` ve `category` üzerinde B-tree
+- [ ] **Adım 2.8:** Doğrulama scripti yaz:
+  - `poc/output/products.json` içindeki ürünleri embedding'leriyle veritabanına yaz.
+  - SQL'de `<=>` ile bir sorguya en yakın 3 ürünü getir. Sonuç `embed_test.py` ile aynı çıkmalı.
+- **Çıkış kriteri:** Tablolar ve index'ler migrasyonla oluşuyor, vektör araması SQL'den çalışıyor.
 
 ### Aşama 3: Veri Toplama (Selenium Scraping) — 🔄 Güncellendi
 - [ ] `data/categories.yaml` hazırla: giyim & ayakkabı alt kategorileri (elbise, mont, hırka, sweatshirt, t-shirt, şort, bot, sandalet…). Hedef ~1000-1500 ürün.
@@ -214,8 +214,12 @@ Büyük yatırımdan önce en riskli iki varsayım doğrulanır.
   - "neden önerildi" alanını üret
   - sorgu embedding'ini LRU cache'de tut
   - alakasız sorgular için sabit skor eşiği kullanma (Adım 0.4'teki "laptop çantası" bulgusu). "Sonuç yok" kararını kategori eşleşmesine ve kelime araması sinyaline göre ver.
+- [ ] Pydantic şemalarını `app/schemas.py` dosyasına yaz (`from_attributes=True`). Aşama 2'den taşındı.
 - [ ] `POST /api/search` endpoint'ini yaz: `{query, city?, max_price?, limit}`
-- [ ] JWT auth endpoint'lerini yaz:
+- [ ] Kullanıcı tablolarını yeni bir Alembic migrasyonuyla ekle (Aşama 2'den taşındı):
+  - `User`: id, email, password_hash, default_city, created_at
+  - `SearchHistory`, `Favorite`, `RevokedToken` (jti, expires_at)
+- [ ] JWT auth endpoint'lerini yaz (`.env` ve `.env.example` dosyalarına `JWT_SECRET` ekle):
   - `POST /api/auth/register`
   - `POST /api/auth/login` (30 dk token)
   - `POST /api/auth/logout` (jti → RevokedToken)
@@ -225,6 +229,25 @@ Büyük yatırımdan önce en riskli iki varsayım doğrulanır.
   - `default_city`
   - `POST/DELETE /api/favorites/{product_id}`
 - [ ] `GET /api/products/{id}` ve `GET /health` endpoint'lerini ekle.
+
+### Ara Aşama: Senior Reviewer Agent — ⏸️ Aşama 1'den taşındı
+Aşama 5 bittikten sonra yapılır. Anthropic API anahtarı gerekir (Claude aboneliğinden ayrı, kullanım başına ücretli). Yazarken `claude-api` skill'i yüklenir.
+- [ ] `.env` ve `.env.example` dosyalarına `ANTHROPIC_API_KEY` ve `REVIEWER_MODEL` ekle.
+- [ ] `agents/review_guidelines.md` yaz. Projeye özel kurallar:
+  - kod içinde gizli anahtar olmaz
+  - SQL string birleştirme yapılmaz
+  - scraper rate limiter ve robots kontrolünü atlamaz
+  - endpoint'lerde `response_model` kullanılır
+  - model her istekte yeniden yüklenmez
+- [ ] `agents/reviewer.py` yaz:
+  1. `git diff --cached` veya `--range main...HEAD` ile diff'i al.
+  2. `ruff` ve `bandit` çalıştır.
+  3. Diff + guidelines + lint bulgularını Claude API'ye gönder. Model `REVIEWER_MODEL` ile ayarlanır, varsayılan `claude-sonnet-5`. Büyük diff'leri dosya bazında böl.
+  4. Yapılandırılmış çıktı al: `severity: blocker|major|minor`, dosya, satır, mesaj.
+  5. Sonucu `rich` ile renkli olarak terminale yaz.
+  6. `blocker` varsa çıkış kodu 1 döndür. API anahtarı yoksa sadece uyarı ver.
+- [ ] `.pre-commit-config.yaml` hazırla: ruff, ardından local hook `python agents/reviewer.py --staged`.
+- [ ] İlk tarama: `python agents/reviewer.py --range <ilk-commit>..HEAD`. Blocker ve major bulguları düzelt.
 
 ### Aşama 6: Web Arayüzü — 🆕 Yeni
 - [ ] `GET /` adresinden `templates/index.html` sayfasını sun.
@@ -241,7 +264,7 @@ Büyük yatırımdan önce en riskli iki varsayım doğrulanır.
 - [ ] `eval/run_eval.py` yaz:
   - üç modu karşılaştır: **sadece kelime** / **sadece vektör** / **hibrit + hava durumu**
   - Recall@5 ve MRR ölç
-- [ ] Reviewer Agent ile tüm kodu tara: `python agents/reviewer.py --range <ilk-commit>..HEAD`. Blocker ve major bulguları refactor et.
+- [ ] Reviewer Agent ile son tarama: Ara Aşama'daki taramadan sonra yazılan kod (Aşama 6 dahil). Blocker ve major bulguları refactor et.
 - [ ] Performans testi yap:
   - p50/p95 ölç (hedef: CPU'da arama p95 < 300 ms)
   - darboğazı raporla (embedding / DB / hava durumu)
