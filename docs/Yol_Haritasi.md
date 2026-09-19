@@ -48,7 +48,7 @@ Sonuçlar **web arayüzünde** görüntülenir.
    - Proje `.venv` ortamı **Python 3.13.5** ile kurulu (sistem `python3`).
    - **PostgreSQL 17.10** çalışıyor (küme `main`, port 5432). `kitana` sistem kullanıcısı için veritabanı rolü yok. Yönetici işlemleri `sudo -u postgres ...` ile yapılır.
    - Paket kurmadan önce ortamı aktif et: `source .venv/bin/activate`. Aktif değilse Debian sistem `pip`'ini engeller (`externally-managed-environment`).
-   - **pgvector kurulu değil:** `sudo apt install postgresql-17-pgvector` (Debian paketi 0.8.0)
+   - **pgvector 0.8.0** kuruldu (17 Eylül 2026, `postgresql-17-pgvector`). Proje veritabanı ve kullanıcısı: `trendanalys`.
    - **GPU:** GeForce GTX 1650 Ti (4 GB), sürücü 550.163.01. 14 Eylül'deki ilk kontrolde `nvidia-smi` sürücüye bağlanamamıştı, 17 Eylül'de çalışıyor. Embedding'ler GPU'da hesaplanabilir; ~1500 ürün için CPU da yeterli.
 6. **Etik ve KVKK:**
    - istekler arası 4-8 sn bekleme
@@ -142,10 +142,11 @@ Büyük yatırımdan önce en riskli iki varsayım doğrulanır.
   - Reviewer Agent maddeleri → Aşama 5'ten sonraki **Ara Aşama**
 
 ### Aşama 2: Veritabanı ve Vektör Mimarisi — 🔄 Güncellendi
-- [ ] **Adım 2.1:** pgvector eklentisini kur: `sudo apt install postgresql-17-pgvector`
-- [ ] **Adım 2.2:** Projeye ayrı bir veritabanı kullanıcısı ve veritabanı aç (ikisinin adı da `trendanalys`).
+- [x] **Adım 2.1:** pgvector eklentisini kur: `sudo apt install postgresql-17-pgvector`
+- [x] **Adım 2.2:** Projeye ayrı bir veritabanı kullanıcısı ve veritabanı aç (ikisinin adı da `trendanalys`).
   - `vector` eklentisini yönetici (`postgres`) kullanıcısıyla bir kez aç. Uygulama kullanıcısına yönetici yetkisi verilmez.
   - Bağlantıyı `psql -h localhost -U trendanalys -d trendanalys` ile test et.
+  - Sonuç: `vector` 0.8.0 açık. `<=>` testi: aynı vektörler için 0, dik vektörler için 1 (cosine mesafesi = 1 − benzerlik).
 - [ ] **Adım 2.3:** `.env` ve `.env.example` hazırla.
   - Şimdilik sadece `DATABASE_URL` (`postgresql+psycopg://kullanıcı:şifre@localhost:5432/trendanalys`).
   - `.env` gerçek şifreyi içerir ve repoya girmez. `.env.example` şifresiz örnektir ve repoya girer.
