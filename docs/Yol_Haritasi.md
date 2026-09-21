@@ -147,25 +147,29 @@ Büyük yatırımdan önce en riskli iki varsayım doğrulanır.
   - `vector` eklentisini yönetici (`postgres`) kullanıcısıyla bir kez aç. Uygulama kullanıcısına yönetici yetkisi verilmez.
   - Bağlantıyı `psql -h localhost -U trendanalys -d trendanalys` ile test et.
   - Sonuç: `vector` 0.8.0 açık. `<=>` testi: aynı vektörler için 0, dik vektörler için 1 (cosine mesafesi = 1 − benzerlik).
-- [ ] **Adım 2.3:** `.env` ve `.env.example` hazırla.
+- [x] **Adım 2.3:** `.env` ve `.env.example` hazırla.
   - Şimdilik sadece `DATABASE_URL` (`postgresql+psycopg://kullanıcı:şifre@localhost:5432/trendanalys`).
   - `.env` gerçek şifreyi içerir ve repoya girmez. `.env.example` şifresiz örnektir ve repoya girer.
   - `JWT_SECRET` Aşama 5'te, `ANTHROPIC_API_KEY` ve `REVIEWER_MODEL` Ara Aşama'da eklenecek.
-- [ ] **Adım 2.4:** Paketleri kur ve sürümleriyle `requirements.txt` dosyasına ekle: sqlalchemy, psycopg[binary], pgvector, alembic, pydantic-settings.
-- [ ] **Adım 2.5:** `app/config.py` (pydantic-settings ile `.env` okuma) ve `app/db.py` (engine, session, `Base`) yaz.
-- [ ] **Adım 2.6:** `app/models.py` içine ürün tablolarını yaz:
+- [x] **Adım 2.4:** Paketleri kur ve sürümleriyle `requirements.txt` dosyasına ekle: sqlalchemy, psycopg[binary], pgvector, alembic, pydantic-settings.
+- [x] **Adım 2.5:** `app/config.py` (pydantic-settings ile `.env` okuma) ve `app/db.py` (engine, session, `Base`) yaz.
+- [x] **Adım 2.6:** `app/models.py` içine ürün tablolarını yaz:
   - `Product`: id, trendyol_id (unique), url, name, brand, category, category_path, price, currency, color, gender, rating, rating_count, review_count, `attributes` (JSONB), image_url, `search_text`, `embedding = mapped_column(Vector(1024))`, `tsv` (generated tsvector, `'turkish'`), content_hash, scraped_at, embedded_at
   - `ReviewSnippet`: product_id, text, rating, date. **Yorum yazanın adı yok (KVKK).**
   - Alanlar `poc/output/products.json` çıktısına göre güncellendi. `description` yok, çünkü ld+json açıklaması sadece SEO metni.
   - Kullanıcı tabloları (`User`, `SearchHistory`, `Favorite`, `RevokedToken`) Aşama 5'te, auth ile birlikte eklenecek.
-- [ ] **Adım 2.7:** Alembic kur, ilk migrasyonu yaz ve `alembic upgrade head` ile uygula:
+- [x] **Adım 2.7:** Alembic kur, ilk migrasyonu yaz ve `alembic upgrade head` ile uygula:
   - `CREATE EXTENSION IF NOT EXISTS vector;`
   - `products` ve `review_snippets` tabloları
   - index'ler: `embedding` üzerinde HNSW (`vector_cosine_ops`), `tsv` üzerinde GIN, `price` ve `category` üzerinde B-tree
-- [ ] **Adım 2.8:** Doğrulama scripti yaz:
-  - `poc/output/products.json` içindeki ürünleri embedding'leriyle veritabanına yaz.
-  - SQL'de `<=>` ile bir sorguya en yakın 3 ürünü getir. Sonuç `embed_test.py` ile aynı çıkmalı.
+- [x] **Adım 2.8:** Doğrulama scripti: `poc/load_to_db.py`
+  - 19 ürün ve 239 yorum veritabanına yazıldı, `tsv` sütununu PostgreSQL kendisi doldurdu.
+  - "yeşil renkli mont" sorgusu SQL'de (`cosine_distance`) `embed_test.py` ile aynı ürünleri getirdi: 1144525931 (0.414), 879026670 (0.469).
 - **Çıkış kriteri:** Tablolar ve index'ler migrasyonla oluşuyor, vektör araması SQL'den çalışıyor.
+- ✅ **Aşama 2 tamamlandı (21 Eylül 2026).** Migrasyon sürümü `8b6444147f4f`.
+- Notlar:
+  - `url`, `content_hash` ve `scraped_at` alanları `products.json` içinde yok; scraper Aşama 3'te dolduracak.
+  - `build_product_text` şu an hem `poc/embed_test.py` hem `poc/load_to_db.py` içinde. Aşama 4'te `nlp/text_builder.py` altında tek kaynağa inecek.
 
 ### Aşama 3: Veri Toplama (Selenium Scraping) — 🔄 Güncellendi
 - [ ] `data/categories.yaml` hazırla: giyim & ayakkabı alt kategorileri (elbise, mont, hırka, sweatshirt, t-shirt, şort, bot, sandalet…). Hedef ~1000-1500 ürün.

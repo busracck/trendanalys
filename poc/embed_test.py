@@ -26,7 +26,7 @@ EXPECTED = {
     "laptop çantası": set(),  # no such product: the top score should be low
 }
 
-# Attributes that don't describe how a product looks or is used
+
 NOISE_ATTRIBUTES = {
     "Menşei",
     "Yıkama Talimatı",
