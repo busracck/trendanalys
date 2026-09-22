@@ -1,0 +1,37 @@
+- name: elbise
+  url: https://www.trendyol.com/elbise-x-c56
+  target: 100
+
+- name: kadin-mont
+  url: https://www.trendyol.com/kadin-mont-x-g1-c118
+  target: 100
+
+
+- name: kadin-sweatshirt
+  url: https://www.trendyol.com/kadin-sweatshirt-x-g1-c1179
+  target: 100
+
+
+- name: kadin-t-shirt
+  url: https://www.trendyol.com/kadin-t-shirt-x-g1-c73
+  target: 100
+
+
+- name: kadin-bot
+  url: https://www.trendyol.com/kadin-bot-x-g1-c1025
+  target: 100
+
+
+- name: erkek-mont
+  url: https://www.trendyol.com/erkek-mont-x-g2-c118
+  target: 100
+
+
+- name: erkek-sweatshirt
+  url: https://www.trendyol.com/erkek-sweatshirt-x-g2-c1179
+  target: 100
+
+
+- name: erkek-spor-ayakkabi
+  url: https://www.trendyol.com/erkek-spor-ayakkabi-x-g2-c109
+  target: 100

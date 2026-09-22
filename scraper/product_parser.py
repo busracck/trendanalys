@@ -1,9 +1,13 @@
-import json
+import re
 from pathlib import Path
+import json
 
 from bs4 import BeautifulSoup
 
-OUTPUT_DIR = Path(__file__).parent / "output"
+from scraper.driver import fetch_page
+
+RAW_HTML_DIR = Path(__file__).resolve().parent.parent / "data" / "raw_html"
+PD_STATE_MARKER = 'window["__envoy__SHARED_PROPS"]='
 
 
 def extract_ld_json(soup):
@@ -54,7 +58,8 @@ def parse_product_html(html):
 
     product = find_block_by_type(blocks, ["Product", "ProductGroup"])
     if product is None:
-        return None
+        return parse_pd_html(html)
+
     webpage = find_block_by_type(blocks, ["WebPage"])
 
     offers = product.get("offers", {})
@@ -102,31 +107,79 @@ def parse_reviews(product_block):
     return reviews
 
 
-if __name__ == "__main__":
-    products = []
-
-    for path in sorted(OUTPUT_DIR.glob("*.html")):
-        html = path.read_text(encoding="utf-8")
-        product = parse_product_html(html)
-        if product is None:
-            print(f"{path.name}: no Product/ProductGroup ld+json block found.")
-            continue
-
-        products.append(product)
-
-        print(
-            f"{product['trendyol_id']:<10} | {product['name'][:40]:<40} | "
-            f"{product['price']} TL | {len(product['attributes'])} özellik"
-            f" | Puan: {product['rating']} ({product['review_count']} Yorum)"
-        )
+def extract_product_id(url):
+    match = re.search(r"-p-(\d+)", url)
+    return match.group(1) if match else None
 
 
-    output_file = OUTPUT_DIR / "products.json"
-    
+def get_product_html(driver, url):
+    product_id = extract_product_id(url)
+    if product_id is None:
+        return None
 
-    json_data = json.dumps(products, ensure_ascii=False, indent=2)
-    output_file.write_text(json_data, encoding="utf-8")
-    
-    print(f"\nİşlem tamamlandı! Toplam {len(products)} ürün '{output_file.name}' dosyasına kaydedildi.")
+    path = RAW_HTML_DIR / f"{product_id}.html"
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+
+    html = fetch_page(driver, url)
+    if html is None:
+        return None
+
+    RAW_HTML_DIR.mkdir(parents=True, exist_ok=True)
+    path.write_text(html, encoding="utf-8")
+    return html
 
 
+def extract_embedded_state(html):
+    """/pd/ şablonunda sayfaya gömülü JSON'u çıkarır."""
+    start = html.find(PD_STATE_MARKER)
+    if start == -1:
+        return None
+
+    start += len(PD_STATE_MARKER)
+    end = html.find("</script>", start)
+    if end == -1:
+        return None
+
+    try:
+        return json.loads(html[start:end].strip().rstrip(";"))
+    except json.JSONDecodeError:
+        return None
+
+
+def parse_pd_html(html):
+    state = extract_embedded_state(html)
+    if state is None:
+        return None
+
+    product = state.get("product") or {}
+    price_info = (
+        product.get("merchantListing", {})
+        .get("winnerVariant", {})
+        .get("price", {})
+    )
+
+    rating_score = product.get("ratingScore", {})
+    images = product.get("images") or []
+
+    hierarchy = product.get("category", {}).get("hierarchy", "")
+
+    return {
+        "trendyol_id": str(product.get("id")),
+        "name": product.get("name"),
+        "brand": product.get("brand", {}).get("name"),
+        "price": price_info.get("discountedPrice", {}).get("value"),
+        "currency": price_info.get("currency"),
+        "color": None,
+                "gender": product.get("gender", {}).get("name"),
+        "image_url": images[0] if images else None,
+        "category_path": hierarchy.split("/") if hierarchy else [],
+        "attributes": {
+            a["key"]["name"]: a["value"]["name"] for a in product.get("attributes", [])
+        },
+        "rating": rating_score.get("averageRating"),
+        "rating_count": rating_score.get("totalCount"),
+        "review_count": rating_score.get("commentCount"),
+        "reviews": [],
+
+    }

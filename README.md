@@ -8,7 +8,7 @@ Bu proje, Trendyol'dan toplanan bir ürün kataloğu üzerinde **anlamsal (seman
 - Hava durumunu hesaba katar.
 - En uygun ürünleri Trendyol linkleriyle listeler.
 
-> **Durum:** Aşama 0 (fizibilite testi) tamamlandı. Ayrıntılı plan ve sonuçlar: [docs/Yol_Haritasi.md](docs/Yol_Haritasi.md)
+> **Durum:** Aşama 0-3 tamamlandı: fizibilite testi, veritabanı (PostgreSQL + pgvector) ve veri toplama. Veritabanında 898 ürün ve 11.959 yorum var. Sırada vektörlerin toplu hesaplanması (Aşama 4) ve arama servisi (Aşama 5) var. Ayrıntılı plan ve sonuçlar: [docs/Yol_Haritasi.md](docs/Yol_Haritasi.md)
 
 ## Aşama 0'da neler doğrulandı?
 
@@ -22,8 +22,8 @@ Bu proje, Trendyol'dan toplanan bir ürün kataloğu üzerinde **anlamsal (seman
 
 ## Kullanılan teknolojiler
 
-- **Şu an:** Python 3.13, Selenium, Protego (robots.txt), BeautifulSoup, sentence-transformers (`BAAI/bge-m3`), PyTorch (CUDA)
-- **Planlanan:** FastAPI, PostgreSQL + pgvector, Open-Meteo, basit bir web arayüzü, Claude API ile kod inceleme ajanı
+- **Şu an:** Python 3.13, Selenium, Protego (robots.txt), BeautifulSoup, PostgreSQL + pgvector, SQLAlchemy, Alembic, sentence-transformers (`BAAI/bge-m3`), PyTorch (CUDA)
+- **Planlanan:** FastAPI, Open-Meteo, basit bir web arayüzü, Claude API ile kod inceleme ajanı
 
 ## Kurulum
 
@@ -41,16 +41,34 @@ pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 pip install -r requirements.txt
 ```
 
-## Deneme scriptleri (`poc/`)
+## Veritabanı
 
-Scriptleri proje kökünden, bu sırayla çalıştırın:
+PostgreSQL 17 ve pgvector gerekiyor:
 
-| Sıra | Komut | Ne yapar? |
-|---|---|---|
-| 1 | `python poc/open_product.py` | Elle seçilmiş 5 ürün sayfasını `poc/output/` klasörüne indirir |
-| 2 | `python poc/crawl_category.py` | "Kadın Mont" kategorisinden ürün linklerini toplar ve 15 yeni ürün indirir |
-| 3 | `python poc/parse_product.py` | İndirilen sayfaları ayrıştırır ve `poc/output/products.json` dosyasına yazar |
-| 4 | `python poc/embed_test.py` | Ürünleri `bge-m3` ile vektöre çevirir, 12 test sorgusunu çalıştırıp başarıyı raporlar |
+```bash
+sudo apt install postgresql-17-pgvector
+sudo -u postgres createuser --pwprompt trendanalys
+sudo -u postgres createdb --owner=trendanalys trendanalys
+
+cp .env.example .env     # DATABASE_URL satırına kendi şifreni yaz
+alembic upgrade head     # tabloları ve index'leri oluşturur
+```
+
+## Veri toplama
+
+```bash
+python -m scraper.run_scraper                        # categories.yaml'daki bütün kategoriler
+python -m scraper.run_scraper --category kadin-mont  # tek kategori
+python -m scraper.run_scraper --limit 10             # kategori başına 10 ürün
+```
+
+Toplanacak kategoriler `data/categories.yaml` dosyasında tutulur. Scraper istekler arasında 4-8 saniye bekler, indirdiği sayfaları `data/raw_html/` klasöründe saklar ve aynı ürüne ikinci kez rastlayınca içerik imzasına bakıp değişmemişse dokunmaz. Yarıda kesilirse aynı komutla kaldığı yerden devam eder.
+
+Modelin arama başarısını ölçen deneme scripti:
+
+```bash
+python -m poc.embed_test
+```
 
 İlk çalıştırmada `bge-m3` modeli (~2.3 GB) indirilir.
 

@@ -172,25 +172,32 @@ Büyük yatırımdan önce en riskli iki varsayım doğrulanır.
   - `build_product_text` şu an hem `poc/embed_test.py` hem `poc/load_to_db.py` içinde. Aşama 4'te `nlp/text_builder.py` altında tek kaynağa inecek.
 
 ### Aşama 3: Veri Toplama (Selenium Scraping) — 🔄 Güncellendi
-- [ ] `data/categories.yaml` hazırla: giyim & ayakkabı alt kategorileri (elbise, mont, hırka, sweatshirt, t-shirt, şort, bot, sandalet…). Hedef ~1000-1500 ürün.
-- [ ] `scraper/robots.py` yaz: `protego` ile her URL'yi kontrol et, yasaklı URL'yi reddet.
-- [ ] `scraper/driver.py` yaz:
-  - tek sekme
-  - istekler arası 4-8 sn rastgele bekleme
-  - 403 veya captcha görülürse scraper'ı durdur
-- [ ] `scraper/category_crawler.py` yaz:
-  - sade kategori sayfalarından ürün linklerini (`-p-` içeren href'ler) topla
-  - kategori başına birkaç sayfa gez (`?pi=2`, `?pi=3`)
-  - `sst=` ve özellik filtresi kullanma
-  - her URL'yi yine robots kontrolünden geçir
-- [ ] `scraper/product_parser.py` yaz: ham HTML'i `data/raw_html/{trendyol_id}.html` olarak cache'le, sonra ayrıştır.
-  - Hem `Product` hem `ProductGroup` bloklarını oku. Temel olarak Aşama 0'daki `poc/parse_product.py` kullanılır.
-  - `ld+json` bloğu olmayan `/pd/` şablonu için sayfaya gömülü JSON'dan okuyan bir yedek ayrıştırıcı ekle. Önce bu şablonun ne kadar yaygın olduğunu ölç (Aşama 0'da 20 sayfadan 1'inde görüldü).
-- [ ] `scraper/cleaner.py` yaz:
-  - HTML tag'lerini ve emojileri temizle, boşlukları normalize et
-  - **Türkçe küçük harf** fonksiyonu ekle (`İ→i`, `I→ı`)
-- [ ] Veritabanına `trendyol_id` üzerinden upsert yap. `content_hash` değişirse `embedded_at` alanını sıfırla.
-- [ ] CLI hazırla: `python -m scraper.run_scraper --category elbise --limit 100`
+Hedef: ~1000-1500 ürün, doğrudan veritabanına. `search_text` ve `embedding` boş kalır, onları Aşama 4 doldurur.
+- [x] **Adım 3.1:** `scraper/` paketi ve `data/categories.yaml`.
+  - Giyim & ayakkabı alt kategorileri (elbise, mont, hırka, sweatshirt, t-shirt, şort, bot, sandalet…), her biri için **sade** kategori URL'si ve hedef ürün sayısı.
+  - Filtreli (`-x-…-a…-v…`), aramalı (`?q=`) veya sıralamalı (`?sst=`) URL yok.
+  - `pyyaml` paketini kur ve `requirements.txt`'e ekle.
+- [x] **Adım 3.2:** `scraper/robots.py`: `protego` ile robots.txt'i bir kez indir, `is_allowed(url)` sun. Yasaklı URL reddedilir.
+- [x] **Adım 3.3:** `scraper/driver.py`: tek Chrome penceresi, istekler arası 4-8 sn rastgele bekleme, `h1` beklemesi, engel/captcha belirtisinde durdurma. Temel: `poc/open_product.py`.
+- [x] **Adım 3.4:** `scraper/category_crawler.py`: `a.product-card` linklerini topla, kategori başına birkaç sayfa gez (`?pi=2`, `?pi=3`), her URL'yi robots kontrolünden geçir. Temel: `poc/crawl_category.py`.
+- [x] **Adım 3.5:** `scraper/product_parser.py`: ham HTML `data/raw_html/{trendyol_id}.html` olarak cache'lenir, sonra ayrıştırılır.
+  - Hem `Product` hem `ProductGroup` bloklarını oku (temel: `poc/parse_product.py`).
+  - `ld+json` bloğu olmayan `/pd/` şablonu için gömülü JSON'dan okuyan yedek ayrıştırıcı. Yaygınlığı önce ölçülür (Aşama 0'da 20 sayfada 1).
+- [x] **Adım 3.6:** `scraper/cleaner.py`: HTML etiketi ve emoji temizliği, boşluk normalizasyonu, **Türkçe küçük harf** (`İ→i`, `I→ı`), `content_hash` üretimi.
+- [x] **Adım 3.7:** `scraper/run_scraper.py`: CLI (`python -m scraper.run_scraper --category elbise --limit 100`).
+  - `trendyol_id` üzerinden upsert. `content_hash` değiştiyse `embedded_at` sıfırlanır (yeniden embedding gerekir).
+  - Yorumlar `review_snippets` tablosuna yazılır.
+- Not: `polite_sleep` ve robots kontrolü `driver.fetch_page` içinde; ağa çıkan her istek oradan geçtiği için kural atlanamaz. Önbellekten okunan sayfalar beklemez.
+- [x] **Adım 3.8:** Tam çalıştırma (22 Eylül 2026): 8 kategori, **898 ürün, 11.959 yorum, 0 hata**.
+  - Son turda: 596 yeni, 23 güncellendi, 181 değişmedi.
+  - Fiyat ve görsel bütün üründe dolu; renk 117 üründe, yorum 108 üründe yok.
+  - `data/raw_html/`: 891 sayfa, 565 MB (repoya girmez).
+- **Çıkış kriteri:** Veritabanında hedeflenen sayıda ürün var, tekrar çalıştırma mevcut kayıtları bozmuyor, robots kuralları hiç ihlal edilmedi.
+- ✅ **Aşama 3 tamamlandı (22 Eylül 2026).**
+- Tarama sırasında çıkan iki sorun ve çözümleri:
+  - Chrome uzun oturumlarda takılıyor (`ReadTimeoutError`, chromedriver cevap vermiyor). Bu hata `WebDriverException` değil `urllib3.exceptions.HTTPError` alt sınıfı; ikisi birden yakalanıyor. Ayrıca her 50 üründe tarayıcı yenileniyor ve sayfa 2 kez deneniyor.
+  - `category` sütununa kategori yolunun son parçası yazılıyordu, Trendyol oraya bazen markayı ekliyor ("Defacto Kadın Mont"). Artık `categories.yaml`'daki ad yazılıyor; eski 40 kayıt SQL ile düzeltildi.
+- Temizlik: `poc/open_product.py`, `poc/crawl_category.py`, `poc/parse_product.py` ve `poc/load_to_db.py` silindi (işlevleri `scraper/` altına taşındı). `poc/embed_test.py` kaldı: model başarısını ölçen tek script o.
 
 ### Aşama 4: NLP Pipeline ve Embeddings — 🔄 Güncellendi
 - [ ] `app/services/embedder.py` yaz: model (`BAAI/bge-m3`) uygulama açılışında tek sefer yüklenir.
