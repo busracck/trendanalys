@@ -1,0 +1,45 @@
+# Arama kalitesini ölçen test sorguları.
+# expected: doğru kabul edilen trendyol_id listesi.
+#
+# UYARI: Bu etiketler Aşama 0'daki 19 ürünlük havuza göre yapıldı. Havuz 898 ürüne
+# çıktığı için listede olmayan bir ürün de doğru cevap olabilir; sayılar gerçek
+# başarıyı olduğundan düşük gösterir. Aşama 7'de bütün havuza göre yeniden etiketlenecek.
+
+- query: spor salonuna giderken giyeceğim ayakkabı
+  expected: ["42713792"]
+
+- query: göz makyajı için bir şey
+  expected: ["1016742922"]
+
+- query: kapüşonlu şişme mont
+  expected: ["1071479043", "1073371103", "1100119387", "849095967"]
+
+- query: düğmeli mont
+  expected: ["977379012", "987847941"]
+
+- query: yeşil renkli mont
+  expected: ["1144525931", "879026670"]
+
+- query: süet ceket
+  expected: ["450350040"]
+
+- query: erkek arkadaşıma hediye alacağım tişört
+  expected: ["946802869"]
+
+- query: yağmur geçirmeyen kaban
+  expected: ["1073371103", "1100119387", "856865482", "977379012", "985084456"]
+
+# Yazım hatası bilerek bırakıldı
+- query: deri cekt
+  expected: ["1080965079", "450350040"]
+
+# İngilizce sorgu
+- query: white sneakers
+  expected: ["42713792"]
+
+- query: içi peluşlu sıcak tutan mont
+  expected: ["1080965079", "879026670", "977379012"]
+
+# Böyle bir ürün yok: en yüksek skorun düşük kalması beklenir
+- query: laptop çantası
+  expected: []

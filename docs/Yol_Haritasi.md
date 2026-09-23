@@ -200,15 +200,27 @@ Hedef: ~1000-1500 ürün, doğrudan veritabanına. `search_text` ve `embedding` 
 - Temizlik: `poc/open_product.py`, `poc/crawl_category.py`, `poc/parse_product.py` ve `poc/load_to_db.py` silindi (işlevleri `scraper/` altına taşındı). `poc/embed_test.py` kaldı: model başarısını ölçen tek script o.
 
 ### Aşama 4: NLP Pipeline ve Embeddings — 🔄 Güncellendi
-- [ ] `app/services/embedder.py` yaz: model (`BAAI/bge-m3`) uygulama açılışında tek sefer yüklenir.
-- [ ] `nlp/text_builder.py` yaz:
-  - Metin formatı: `Ad | Kategori | Marka | Özellikler | kısa yorum parçaları`. `ld+json` içindeki açıklama sadece SEO kalıbı olduğu için kullanılmaz.
-  - Gürültülü özellikleri çıkar (`NOISE_ATTRIBUTES`: Menşei, Yıkama Talimatı, Kutu Durumu…) ve yorumları ekle. Temel olarak `poc/embed_test.py` içindeki `build_product_text` kullanılır.
-  - Uzunluk: bge-m3'ün sınırı 8192 token, 20 yorum (en fazla ~910 token) rahatça sığar. Yine de metin uzunluklarını logla.
-- [ ] `nlp/build_embeddings.py` yaz:
-  - sadece `embedded_at IS NULL` olan ürünleri işle
-  - 32'lik batch'ler ve `normalize_embeddings=True` kullan
-  - toplu `UPDATE` yap
+- [x] **Adım 4.1:** `nlp/text_builder.py`: `Product` satırından modele verilecek metni üretir.
+  - Biçim: `Ad. Kategori: a > b. özellik: değer; ... Yorumlar: ...` (temel: `poc/embed_test.py` içindeki `build_product_text`).
+  - `NOISE_ATTRIBUTES` (Menşei, Yıkama Talimatı, Kutu Durumu…) ayıklanır. `ld+json` açıklaması SEO kalıbı olduğu için kullanılmaz.
+- [x] **Adım 4.2:** `app/services/embedder.py`: modeli **tek sefer** yükler, `encode_passages` ve `encode_query` sunar.
+  - GPU 4 GB olduğu için `max_seq_length` sınırlanır ve küçük batch kullanılır.
+- [x] **Adım 4.3:** `nlp/build_embeddings.py`: CLI.
+  - sadece `embedded_at IS NULL` olan ürünleri işler
+  - batch'ler hâlinde encode eder, `normalize_embeddings=True`
+  - her batch'ten sonra `commit`; `search_text`, `embedding`, `embedded_at` dolar
+  - metin uzunluklarını (token/karakter) loglar
+- [x] **Adım 4.4:** 898 ürün için çalıştır, süreyi ölç. SQL'den örnek arama yap, `poc/embed_test.py` sonuçlarıyla karşılaştır.
+- **Çıkış kriteri:** `embedded_at IS NULL` kalan ürün yok, vektör araması 898 ürün üzerinde anlamlı sonuç veriyor.
+- ✅ **Aşama 4 tamamlandı (23 Eylül 2026).**
+  - 871 ürün **174.6 sn** (0.20 sn/ürün, GTX 1650 Ti). 898/898 ürünün vektörü hazır.
+  - Metin uzunlukları: ortanca 1564, en uzun 3063 karakter (~800 token) — 1024'lük `max_seq_length` yetiyor.
+  - HNSW index kullanılıyor: `Index Scan using ix_products_embedding_hnsw`, en yakın 5 ürün **~1 ms**.
+  - Ölçüm `eval/` altına taşındı (`queries.yaml` + `run_eval.py`), `poc/embed_test.py` silindi.
+- **Kalite ölçümü (23 Eylül, 898 ürün):** otomatik puan 2/11 (1. sıra) ve 4/11 (ilk 3), **ama elle bakınca 11 sorgunun 10'unda gelen ürünler doğru.**
+  - Etiketler 19 ürünlük havuza göre yapıldığı için puan gerçeği yansıtmıyor. Aşama 7'de 898 ürüne göre yeniden etiketlenecek.
+  - **Gerçek hata:** "yeşil renkli mont" → 1. sırada `river green` markalı siyah mont. Renk filtresi şart (Aşama 5, `query_parser`).
+  - **Eşik doğrulaması:** alakasız "laptop çantası" sorgusunun en yakın mesafesi 0.454; doğru cevabı 0.491 mesafede olan sorgular var. Sabit eşik kullanılamaz.
 
 ### Aşama 5: FastAPI Backend — 🔄 Güncellendi
 - [ ] `app/services/query_parser.py` yaz:

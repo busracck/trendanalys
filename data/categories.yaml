@@ -27,6 +27,11 @@
   target: 100
 
 
+- name: erkek-t-shirt
+  url: https://www.trendyol.com/erkek-t-shirt-x-g2-c73
+  target: 100
+
+  
 - name: erkek-sweatshirt
   url: https://www.trendyol.com/erkek-sweatshirt-x-g2-c1179
   target: 100
