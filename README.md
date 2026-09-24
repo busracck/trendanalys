@@ -119,6 +119,30 @@ python -m eval.label              # test sorgularını elle etiketle
 
 İlk çalıştırmada `bge-m3` modeli (~2.3 GB) indirilir. 4 GB'lık bir GPU'da modelin **tek kopyası** sığar: `uvicorn` açıkken `build_embeddings` veya `run_eval` çalıştırılamaz, model CPU'ya düşer.
 
+## Kod inceleme ajanı
+
+`agents/reviewer.py` commit öncesi değişikliği inceler: önce `ruff` ve `bandit` (kesin bulgular), sonra diff + proje kuralları bir LLM'e gönderilir.
+
+```bash
+python -m agents.reviewer              # çalışma alanındaki değişiklikler
+python -m agents.reviewer --staged     # commit'e hazırlananlar
+python -m agents.reviewer --staged --engelle   # blocker varsa commit'i durdur
+```
+
+Sağlayıcı `.env` ile seçilir ve kod tarafında hiçbir şey değişmez:
+
+| sağlayıcı | not |
+|---|---|
+| `ollama` (varsayılan) | Yerel, ücretsiz, anahtarsız. Kod bilgisayardan çıkmaz |
+| `gemini` | `GEMINI_API_KEY` ister |
+| `claude` | `ANTHROPIC_API_KEY` ister |
+
+Uzak sağlayıcı kota ya da yoğunluk nedeniyle cevap vermezse (429/503) iki kez tekrar denenir, sonra `REVIEWER_FALLBACK` sağlayıcısına düşülür.
+
+**Model karşılaştırması.** Bilerek 5 kural ihlali içeren bir dosya hazırlandı (robots baypası, SQL enjeksiyonu, koda gömülü API anahtarı, düşürülmüş bekleme süresi, KVKK ihlali). `qwen3:4b` ikisini yakaladı, üçünü kaçırdı, bir tane de yanlış bulgu üretti. Bu yüzden blocker bulgusu varsayılan olarak commit'i **durdurmuyor**: yanılma payı olan bir aracın yolu kapatması, aracın tamamen kapatılmasına yol açar. `--engelle` bayrağı güçlü bir model kullanıldığında devreye alınır.
+
+`agents/review_guidelines.md` projeye özel 19 kuralı içerir: robots kontrolü atlanamaz, bekleme süresi düşürülemez, yorum yazarı saklanmaz, SQL string birleştirmeyle kurulmaz, model her istekte yüklenmez…
+
 ## Veri ve etik
 
 - **Veri repoda yok.** İndirilen sayfalar ve yorumlar yeniden yayınlanmaz, `.gitignore` ile hariç tutulur. Ürün görselleri kopyalanmaz, Trendyol'un sunucusundan yüklenir.

@@ -28,3 +28,8 @@ fastapi==0.141.1
 uvicorn==0.53.0
 
 jinja2==3.1.6
+
+# Kod inceleme ajanı (Ara Aşama)
+ruff==0.16.8
+bandit==1.9.4
+rich==15.0.0

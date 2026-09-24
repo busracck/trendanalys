@@ -1,0 +1,21 @@
+# Kurulum:  pip install pre-commit && pre-commit install
+# Atlamak:  git commit --no-verify
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.8
+    hooks:
+      - id: ruff            # hataları bulur
+        args: [--fix]
+      - id: ruff-format     # biçimlendirir
+
+  - repo: local
+    hooks:
+      - id: reviewer
+        name: Kod inceleme ajanı
+        entry: python -m agents.reviewer --staged
+        language: system
+        pass_filenames: false
+        types: [python]
+        # --engelle eklenirse blocker bulgusu commit'i durdurur.
+        # Varsayılan olarak yok: model yanılabiliyor, rapor veriyor ama yolu kapatmıyor.

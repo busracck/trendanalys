@@ -256,24 +256,20 @@ Hedef: ~1000-1500 ürün, doğrudan veritabanına. `search_text` ve `embedding` 
   - `User`, `Favorite`, `SearchHistory`, `RevokedToken` tabloları yazılmadı; `JWT_SECRET` ayarı gerekmiyor.
 - **Çıkış kriteri:** `POST /api/search` cümleyle arama yapıyor, filtreler ve hava durumu çalışıyor. ✅ **Aşama 5 tamamlandı (24 Eylül 2026).**
 
-### Ara Aşama: Senior Reviewer Agent — ⏸️ Aşama 1'den taşındı
-Aşama 5 bittikten sonra yapılır. Anthropic API anahtarı gerekir (Claude aboneliğinden ayrı, kullanım başına ücretli). Yazarken `claude-api` skill'i yüklenir.
-- [ ] `.env` ve `.env.example` dosyalarına `ANTHROPIC_API_KEY` ve `REVIEWER_MODEL` ekle.
-- [ ] `agents/review_guidelines.md` yaz. Projeye özel kurallar:
-  - kod içinde gizli anahtar olmaz
-  - SQL string birleştirme yapılmaz
-  - scraper rate limiter ve robots kontrolünü atlamaz
-  - endpoint'lerde `response_model` kullanılır
-  - model her istekte yeniden yüklenmez
-- [ ] `agents/reviewer.py` yaz:
-  1. `git diff --cached` veya `--range main...HEAD` ile diff'i al.
-  2. `ruff` ve `bandit` çalıştır.
-  3. Diff + guidelines + lint bulgularını Claude API'ye gönder. Model `REVIEWER_MODEL` ile ayarlanır, varsayılan `claude-sonnet-5`. Büyük diff'leri dosya bazında böl.
-  4. Yapılandırılmış çıktı al: `severity: blocker|major|minor`, dosya, satır, mesaj.
-  5. Sonucu `rich` ile renkli olarak terminale yaz.
-  6. `blocker` varsa çıkış kodu 1 döndür. API anahtarı yoksa sadece uyarı ver.
-- [ ] `.pre-commit-config.yaml` hazırla: ruff, ardından local hook `python agents/reviewer.py --staged`.
-- [ ] İlk tarama: `python agents/reviewer.py --range <ilk-commit>..HEAD`. Blocker ve major bulguları düzelt.
+### Ara Aşama: Senior Reviewer Agent — ✅ Tamamlandı (24 Eylül 2026)
+- [x] `agents/review_guidelines.md`: 19 kural (etik/KVKK, güvenlik, mimari, dayanıklılık, okunabilirlik).
+- [x] `agents/providers.py`: **sağlayıcıdan bağımsız arayüz** — ollama / gemini / claude aynı imzayı kullanıyor.
+  - `.env`: `REVIEWER_PROVIDER`, `REVIEWER_MODEL`, `REVIEWER_FALLBACK`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`.
+  - 429/503 hatalarında 5 ve 15 sn bekleyip tekrar dener; yine olmazsa `REVIEWER_FALLBACK`'e (ollama) düşer.
+- [x] `agents/reviewer.py`: git diff (yalnızca `*.py`) → ruff + bandit → LLM → `rich` tablosu.
+  - Aynı konum için tek bulgu bırakılır, en yüksek önem derecesi seçilir (küçük modeller tekrar ediyor).
+  - **Blocker varsayılan olarak commit'i durdurmuyor**, `--engelle` ile durduruyor. Gerekçe: modelin yanılma payı var; yolu kapatan araç kapatılır.
+- [x] `.pre-commit-config.yaml`: ruff + ruff-format + yerel reviewer kancası.
+- **Model karşılaştırması (bilerek 5 kural ihlali içeren dosyayla):**
+  - `qwen3:4b` (Ollama, yerel, ücretsiz): robots baypası ve SQL enjeksiyonunu yakaladı; koda gömülü API anahtarını, düşürülmüş `MIN_DELAY`'i ve KVKK ihlalini (yazar adı sütunu) kaçırdı; bir de yanlış bulgu uydurdu.
+  - `gemini-flash-latest` / `gemini-3.5-flash`: ücretsiz katman 429/503 verdi, inceleme yapılamadı. Küçük istekler geçiyor, inceleme boyutundaki istekler kotaya takılıyor.
+  - Sonuç: varsayılan **ollama**; ruff ve bandit kesin bulguları zaten yakaladığı için LLM ek katman olarak kullanılıyor.
+- Not: `gemini-2.5-flash` artık yeni kullanıcılara kapalı; model adı yerine `-latest` takma adları tercih edilmeli.
 
 ### Aşama 6: Web Arayüzü — 🆕 Yeni
 - [x] **Adım 6.1:** Kurulum: `jinja2` paketi, `app/templates/` ve `app/static/` klasörleri, `GET /` ucu.
@@ -296,7 +292,7 @@ Aşama 5 bittikten sonra yapılır. Anthropic API anahtarı gerekir (Claude abon
 ### Aşama 7: Değerlendirme, Optimizasyon ve Dokümantasyon — 🔄 Güncellendi
 - [ ] `eval/queries.yaml`'ı 25-30 sorguya çıkar (şu an 11). Yeni kategoriler (pantolon, bot) için sorgu yok; kısıtlı sorgular tercih edilmeli (renk + fiyat + kullanım amacı).
 - [x] `eval/run_eval.py` yazıldı: üç mod, 1. sıra / Precision@5 / Recall@5 / MRR. Recall paydası `min(doğru sayısı, 5)` — 13 doğru cevabı olan sorguda ilk 5'te 5 doğru bulmak %100 sayılır.
-- [ ] Reviewer Agent ile son tarama: Ara Aşama'daki taramadan sonra yazılan kod (Aşama 6 dahil). Blocker ve major bulguları refactor et.
+- [x] Reviewer Agent taraması yapıldı: çalışma alanındaki değişiklikler incelendi, gerçek bulgu ruff'ın import sıralaması uyarısıydı.
 - [x] Performans testi (`eval/benchmark.py`, 24 Eylül 2026, CPU, 11 sorgu × 3 tur):
   - ayrıştırma 0.2 ms · embedding 71 ms (p95 81) · SQL 2.9 ms (p95 6) · toplam ortanca 6 ms, p95 80 ms.
   - Toplam ortancanın embedding'den küçük olmasının sebebi `_cached_vector` LRU önbelleği: tekrar eden cümlede model çalışmıyor.
