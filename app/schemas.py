@@ -22,8 +22,22 @@ class ProductOut(BaseModel):
     why: str = ""
 
 
+class FiltersOut(BaseModel):
+    """Cümleden çıkarılan bilgiler. Arayüz bunları kullanıcıya gösterir."""
+
+    text: str = ""
+    city: str | None = None
+    min_price: int | None = None
+    max_price: int | None = None
+    color: str | None = None
+    gender: str | None = None
+    category: str | None = None
+
+
 class SearchResponse(BaseModel):
     query: str
     city: str | None = None
     weather: str = ""
+    temperature: float | None = None
+    filters: FiltersOut
     results: list[ProductOut]

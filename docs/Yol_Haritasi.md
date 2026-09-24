@@ -84,7 +84,6 @@ TrendAnalys/
 ├── nlp/            build_embeddings.py, text_builder.py
 ├── agents/         reviewer.py, review_guidelines.md
 ├── eval/           queries.yaml, run_eval.py
-├── poc/            Aşama 0 deneme scriptleri
 ├── data/           iller.json, categories.yaml, raw_html/ (gitignore)
 ├── alembic/  tests/  docs/
 └── .pre-commit-config.yaml  requirements.txt  .env.example  .gitignore  README.md
@@ -280,14 +279,20 @@ Aşama 5 bittikten sonra yapılır. Anthropic API anahtarı gerekir (Claude abon
 - [ ] İlk tarama: `python agents/reviewer.py --range <ilk-commit>..HEAD`. Blocker ve major bulguları düzelt.
 
 ### Aşama 6: Web Arayüzü — 🆕 Yeni
-- [ ] `GET /` adresinden `templates/index.html` sayfasını sun.
-- [ ] Arama bölümünü yap:
-  - arama kutusu ve örnek cümle çipleri
-  - şehir seçimi
-  - hava durumu rozeti ("İzmir · 14°C · serin")
-- [ ] Ürün kartlarını yap: görsel, ad, marka, fiyat, puan, "neden önerildi", **Trendyol'da gör** linki, favori butonu.
-- [ ] Giriş/kayıt modalını ve arama geçmişi panelini ekle.
-- [ ] Mobil uyumluluğu sağla (vanilla JS, build aracı yok).
+- [x] **Adım 6.1:** Kurulum: `jinja2` paketi, `app/templates/` ve `app/static/` klasörleri, `GET /` ucu.
+  - Model açılışta yüklensin (FastAPI `lifespan`), ilk arama 25 sn beklemesin.
+- [x] **Adım 6.2:** `index.html` iskeleti: başlık, arama kutusu, örnek cümle çipleri, şehir alanı, sonuç bölgesi.
+- [x] **Adım 6.3:** `style.css`: sade tasarım, ürün kartı ızgarası, mobil uyumu.
+- [x] **Adım 6.4:** `app.js`: `fetch` ile `POST /api/search`, yükleniyor durumu, hata durumu, kartları basma.
+  - Kart: görsel, ad, marka, fiyat, puan, "neden önerildi", **Trendyol'da gör** linki.
+  - Hava durumu rozeti ("İzmir · 18°C · ılık hava").
+- Arayüz çalışıyor (24 Eylül 2026): tek sayfa, arama kutusu, örnek çipler, "cümleden anladığım" şeridi, ürün kartları.
+  - Tasarım kararı: vurgu rengi hava sıcaklığına göre değişiyor; ayrıştırılan filtreler kullanıcıya gösteriliyor.
+  - **GPU uyarısı:** 4 GB VRAM'e modelin tek kopyası sığıyor. `uvicorn` açıkken `build_embeddings`/`run_eval` çalıştırılamaz. `get_model` artık OOM'da CPU'ya düşüyor.
+  - **Veri dersi:** "erkek pantolon" sorgusu alakasız sonuç verdi, çünkü katalogda pantolon yoktu. Kategori eklendi (`erkek-pantolon` 100, `kadin-pantolon` yarım). Yeni ürün çekince `build_embeddings` çalıştırmak şart, yoksa ürün aramada görünmez.
+- [ ] **Adım 6.5:** "Neden önerildi" metnini ürüne özgü hâle getir (eşleşen özellikler: kapüşonlu, su geçirmez…).
+- [ ] **Adım 6.6:** Favori butonu ve giriş/kayıt modalı (Adım 5.6-5.7 bittikten sonra).
+- **Çıkış kriteri:** Tarayıcıdan cümle yazılıp ürün kartları görülebiliyor, telefonda da düzgün görünüyor.
 
 ### Aşama 7: Değerlendirme, Optimizasyon ve Dokümantasyon — 🔄 Güncellendi
 - [ ] `eval/queries.yaml` hazırla: 30-40 gerçekçi cümle ve her biri için elle işaretlenmiş alakalı ürünler.

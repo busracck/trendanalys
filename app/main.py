@@ -1,25 +1,51 @@
-"""FastAPI uygulaması: arama ve ürün uçları."""
+"""FastAPI uygulaması: web sayfası, arama ve ürün uçları."""
 
-from fastapi import Depends, FastAPI, HTTPException
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
 from app.models import Product
-from app.schemas import ProductOut, SearchRequest, SearchResponse
+from app.schemas import FiltersOut, ProductOut, SearchRequest, SearchResponse
+from app.services.embedder import get_model
 from app.services.search import search
+
+BASE_DIR = Path(__file__).resolve().parent
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Sunucu açılırken: model belleğe alınır, ilk arama hızlı olur
+    get_model()
+    yield
+    # yield sonrası kapanışta çalışır; şimdilik bir işimiz yok
+
 
 app = FastAPI(
     title="TrendAnalys",
     description="Trendyol ürünlerinde cümleyle arama",
     version="0.1.0",
+    lifespan=lifespan,
 )
+
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 
 def get_session():
     """Her istek için bir veritabanı oturumu açar, istek bitince kapatır."""
     with SessionLocal() as session:
         yield session
+
+
+@app.get("/")
+def index(request: Request):
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.get("/health")
@@ -36,10 +62,13 @@ def search_products(request: SearchRequest, session: Session = Depends(get_sessi
         city=request.city,
         max_price=request.max_price,
     )
+    weather = result["weather"]
     return SearchResponse(
         query=request.query,
         city=result["parsed"]["city"],
         weather=result["weather_text"],
+        temperature=weather["temperature"] if weather else None,
+        filters=FiltersOut(**result["parsed"]),
         results=result["results"],
     )
 

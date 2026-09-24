@@ -16,7 +16,10 @@
   url: https://www.trendyol.com/kadin-t-shirt-x-g1-c73
   target: 100
 
-
+- name: kadin-pantolon
+  url: https://www.trendyol.com/kadin-pantolon-x-g1-c70
+  target: 100
+  
 - name: kadin-bot
   url: https://www.trendyol.com/kadin-bot-x-g1-c1025
   target: 100
@@ -40,3 +43,9 @@
 - name: erkek-spor-ayakkabi
   url: https://www.trendyol.com/erkek-spor-ayakkabi-x-g2-c109
   target: 100
+
+
+- name: erkek-pantolon
+  url: https://www.trendyol.com/erkek-pantolon-x-g2-c70
+  target: 100
+

@@ -4,5 +4,4 @@ __pycache__/
 
 .env
 
-poc/output/
 data/raw_html/

@@ -64,13 +64,19 @@ python -m scraper.run_scraper --limit 10             # kategori başına 10 ür�
 
 Toplanacak kategoriler `data/categories.yaml` dosyasında tutulur. Scraper istekler arasında 4-8 saniye bekler, indirdiği sayfaları `data/raw_html/` klasöründe saklar ve aynı ürüne ikinci kez rastlayınca içerik imzasına bakıp değişmemişse dokunmaz. Yarıda kesilirse aynı komutla kaldığı yerden devam eder.
 
-Modelin arama başarısını ölçen deneme scripti:
+Toplanan ürünlerin vektörlerini hesapla (yeni ürün çekildikten sonra her seferinde):
 
 ```bash
-python -m poc.embed_test
+python -m nlp.build_embeddings
 ```
 
 İlk çalıştırmada `bge-m3` modeli (~2.3 GB) indirilir.
+
+## Arama kalitesini ölç
+
+```bash
+python -m eval.run_eval
+```
 
 ## Veri ve etik
 

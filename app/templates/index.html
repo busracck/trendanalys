@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TrendAnalys — cümleyle ürün arama</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="masthead">
+    <a class="wordmark" href="/">trendanalys<span>.</span></a>
+    <p class="masthead-note">anlamsal arama</p>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Aradığını cümleyle anlat.</h1>
+      <p class="lede">
+        Anahtar kelime değil, cümle. Şehri, bütçeyi ve rengi cümleden çıkarır,
+        o şehrin havasını hesaba katar, anlamca en yakın ürünleri getirir.
+      </p>
+
+      <form id="search-form" class="search">
+        <label class="visually-hidden" for="query">Ne arıyorsun?</label>
+        <textarea id="query" name="query" rows="2" maxlength="300" required
+          placeholder="İzmir'de serin bir akşam için 1500 TL altı elbise"></textarea>
+        <button type="submit" id="submit-button">Ara</button>
+      </form>
+
+      <div class="examples" id="examples">
+        <span class="examples-label">dene</span>
+        <button type="button" class="chip">yağmurda ıslanmayan kapüşonlu mont</button>
+        <button type="button" class="chip">Erzurum'da kışın giyeceğim kalın mont</button>
+        <button type="button" class="chip">spor salonuna giderken giyeceğim ayakkabı</button>
+        <button type="button" class="chip">erkek arkadaşıma hediye alacağım tişört</button>
+      </div>
+    </section>
+
+    <!-- Sistemin cümleden ne anladığı: sayfanın asıl iddiası burada görünür -->
+    <section class="reading" id="reading" hidden>
+      <h2 class="reading-title">cümleden anladığım</h2>
+      <div class="tokens" id="tokens"></div>
+    </section>
+
+    <section class="results" id="results" aria-live="polite"></section>
+
+    <p class="status" id="status" hidden></p>
+  </main>
+
+  <footer>
+    <p>
+      Veriler Trendyol'dan <code>robots.txt</code> kurallarına uyularak toplandı.
+      Görseller Trendyol'un sunucusundan yüklenir, kopyalanmaz.
+    </p>
+  </footer>
+
+  <template id="card-template">
+    <article class="card">
+      <a class="card-image" target="_blank" rel="noopener noreferrer">
+        <img alt="" loading="lazy" referrerpolicy="no-referrer">
+      </a>
+      <div class="card-body">
+        <p class="card-brand"></p>
+        <h3 class="card-name"></h3>
+        <p class="card-price"></p>
+        <p class="card-why"></p>
+        <a class="card-link" target="_blank" rel="noopener noreferrer">Trendyol'da gör →</a>
+      </div>
+    </article>
+  </template>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -2,10 +2,8 @@ import json
 import re
 from pathlib import Path
 from functools import lru_cache
-import time
 from functools import lru_cache
 
-import httpx
 
 from scraper.cleaner import COLORS, COLOR_ALIASES, turkish_lower
 

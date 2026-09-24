@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+import torch
 from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "BAAI/bge-m3"
@@ -15,8 +16,17 @@ BATCH_SIZE = 8
 
 @lru_cache(maxsize=1)
 def get_model():
-    """Modeli ilk çağrıda yükler, sonraki çağrılarda aynı nesneyi döndürür."""
-    model = SentenceTransformer(MODEL_NAME)
+    """Modeli ilk çağrıda yükler, sonraki çağrılarda aynı nesneyi döndürür.
+
+    GPU'da yer yoksa (ör. sunucu zaten bir kopya tutuyorsa) CPU'ya düşer:
+    yavaş ama çalışır.
+    """
+    try:
+        model = SentenceTransformer(MODEL_NAME)
+    except torch.OutOfMemoryError:
+        print("GPU belleği yetmedi, model CPU'da çalışacak (daha yavaş).")
+        model = SentenceTransformer(MODEL_NAME, device="cpu")
+
     model.max_seq_length = MAX_SEQ_LENGTH
     return model
 

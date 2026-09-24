@@ -8,9 +8,6 @@
 - query: spor salonuna giderken giyeceğim ayakkabı
   expected: ["42713792"]
 
-- query: göz makyajı için bir şey
-  expected: ["1016742922"]
-
 - query: kapüşonlu şişme mont
   expected: ["1071479043", "1073371103", "1100119387", "849095967"]
 

@@ -196,7 +196,9 @@ def main():
     if args.category:
         categories = [c for c in categories if c["name"] == args.category]
         if not categories:
+            available = ", ".join(c["name"] for c in load_categories())
             print(f"Kategori bulunamadı: {args.category}")
+            print(f"Mevcut kategoriler: {available}")
             return
 
     totals = {"new": 0, "updated": 0, "unchanged": 0, "hata": 0}
