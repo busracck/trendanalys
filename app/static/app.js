@@ -132,7 +132,7 @@ async function runSearch(query) {
 
     if (data.results.length === 0) {
       results.replaceChildren();
-      showStatus("Bu cümleye uyan ürün bulunamadı. Daha genel bir cümle deneyebilirsin.");
+      showStatus(data.message || "Bu cümleye uyan ürün bulunamadı. Daha genel bir cümle deneyebilirsin.");
       return;
     }
 

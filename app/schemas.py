@@ -32,6 +32,7 @@ class FiltersOut(BaseModel):
     color: str | None = None
     gender: str | None = None
     category: str | None = None
+    unavailable: str | None = None
 
 
 class SearchResponse(BaseModel):
@@ -39,5 +40,6 @@ class SearchResponse(BaseModel):
     city: str | None = None
     weather: str = ""
     temperature: float | None = None
+    message: str = ""
     filters: FiltersOut
     results: list[ProductOut]

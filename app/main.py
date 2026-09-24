@@ -43,9 +43,20 @@ def get_session():
         yield session
 
 
+# Kategori adlarının kullanıcıya gösterilecek hâli
+CATEGORY_LABELS = {"t-shirt": "tişört", "spor-ayakkabi": "spor ayakkabı"}
+
+
 @app.get("/")
-def index(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+def index(request: Request, session: Session = Depends(get_session)):
+    """Ana sayfa. Katalogda hangi türlerin olduğunu veritabanından okur."""
+    rows = session.scalars(select(Product.category).distinct()).all()
+    slugs = {row.removeprefix("kadin-").removeprefix("erkek-") for row in rows if row}
+    categories = sorted(CATEGORY_LABELS.get(slug, slug) for slug in slugs)
+
+    return templates.TemplateResponse(
+        request, "index.html", {"categories": categories}
+    )
 
 
 @app.get("/health")
@@ -68,6 +79,7 @@ def search_products(request: SearchRequest, session: Session = Depends(get_sessi
         city=result["parsed"]["city"],
         weather=result["weather_text"],
         temperature=weather["temperature"] if weather else None,
+        message=result["message"],
         filters=FiltersOut(**result["parsed"]),
         results=result["results"],
     )

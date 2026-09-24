@@ -35,13 +35,37 @@ GENDER_WORDS = {
 }
 
 # Tür -> eş anlamlı kelimeler. Sıra önemli: "spor ayakkabı", "ayakkabı"dan önce gelmeli.
+# Katalogda olmayan ürün türleri. Kullanıcı bunları sorduğunda alakasız ürün
+# göstermek yerine "katalogda yok" demek için kullanılır.
+UNAVAILABLE_KEYWORDS = {
+    "çanta": ["çanta"],
+    "şapka": ["şapka", "bere", "kasket"],
+    "atkı": ["atkı", "eldiven", "kaşkol"],
+    "çorap": ["çorap"],
+    "kemer": ["kemer"],
+    "gözlük": ["gözlük"],
+    "saat": ["kol saati"],
+    "takı": ["kolye", "küpe", "yüzük", "bileklik"],
+    "iç giyim": ["iç çamaşırı", "sütyen", "külot", "boxer"],
+    "mayo": ["mayo", "bikini"],
+    "etek": ["etek"],
+    "gömlek": ["gömlek"],
+    "kazak": ["kazak", "hırka"],
+    "şort": ["şort"],
+    "takım elbise": ["takım elbise", "smokin"],
+    "pijama": ["pijama", "gecelik"],
+    "terlik": ["terlik", "sandalet"],
+    "topuklu ayakkabı": ["topuklu", "stiletto"],
+    "kozmetik": ["parfüm", "ruj", "maskara", "makyaj"],
+}
+
 CATEGORY_KEYWORDS = {
     "elbise": ["elbise", "abiye"],
     "mont": ["mont", "kaban", "parka", "anorak"],
     "sweatshirt": ["sweatshirt", "sweat", "hoodie"],
     "t-shirt": ["tişört", "t-shirt", "tshirt"],
     "bot": ["bot", "çizme"],
-    "spor-ayakkabi": ["spor ayakkabı", "sneaker", "ayakkabı"],
+    "spor-ayakkabi": ["spor ayakkabı", "sneaker", "koşu ayakkabı"],
 }
 
 @lru_cache(maxsize=1)
@@ -116,4 +140,15 @@ def parse_query(text):
         "color": find_color(remaining),
         "gender": find_gender(remaining),
         "category": find_category(remaining),
+        # Kategori tanınmadıysa: acaba katalogda hiç olmayan bir tür mü istendi?
+        "unavailable": None if find_category(remaining) else find_unavailable(remaining),
     }
+
+
+def find_unavailable(text):
+    """Katalogda olmayan bir ürün türü isteniyorsa adını döndürür."""
+    lowered = turkish_lower(text)
+    for label, keywords in UNAVAILABLE_KEYWORDS.items():
+        if any(keyword in lowered for keyword in keywords):
+            return label
+    return None

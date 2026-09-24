@@ -64,9 +64,24 @@ def vector_candidates(session, vector, conditions, limit=CANDIDATE_LIMIT):
     return [row[0] for row in session.execute(stmt)]
 
 
+def to_or_query(text):
+    """Kelimeleri VEYA ile bağlar.
+
+    plainto_tsquery bütün kelimelerin aynı anda geçmesini ister; uzun cümlelerde
+    bu hiç sonuç vermiyor ("spor salonuna giderken giyeceğim ayakkabı" -> 0 ürün).
+    VEYA ile arayıp sıralamayı ts_rank'e bırakıyoruz: çok kelime eşleşen üste çıkar.
+    """
+    words = [word for word in text.split() if len(word) > 2]
+    return " or ".join(words)
+
+
 def keyword_candidates(session, text, conditions, limit=CANDIDATE_LIMIT):
     """Kelime araması (PostgreSQL full-text, turkish)."""
-    tsquery = func.plainto_tsquery("turkish", text)
+    or_query = to_or_query(text)
+    if not or_query:
+        return []
+
+    tsquery = func.websearch_to_tsquery("turkish", or_query)
     rank = func.ts_rank(Product.tsv, tsquery)
     stmt = (
         select(Product.id, rank)
@@ -77,15 +92,19 @@ def keyword_candidates(session, text, conditions, limit=CANDIDATE_LIMIT):
     return [row[0] for row in session.execute(stmt)]
 
 
-def reciprocal_rank_fusion(rankings, k=RRF_K):
-    """Birden çok sıralamayı birleştirir: her liste için puan 1/(k + sıra).
+def reciprocal_rank_fusion(rankings, weights=None, k=RRF_K):
+    """Birden çok sıralamayı birleştirir: her liste için puan agirlik / (k + sıra).
 
     Skorlar değil sıralar toplandığı için iki aramanın ölçeklerinin farklı olması sorun olmaz.
+    `weights` verilmezse listeler eşit sayılır.
     """
+    if weights is None:
+        weights = [1.0] * len(rankings)
+
     scores = {}
-    for ranking in rankings:
+    for ranking, weight in zip(rankings, weights):
         for position, product_id in enumerate(ranking, start=1):
-            scores[product_id] = scores.get(product_id, 0) + 1 / (k + position)
+            scores[product_id] = scores.get(product_id, 0) + weight / (k + position)
     return sorted(scores, key=scores.get, reverse=True)
 
 
@@ -111,6 +130,16 @@ def search(session, query, limit=10, city=None, max_price=None):
     if max_price:
         parsed["max_price"] = max_price
 
+    # Katalogda hiç olmayan bir tür istendiyse alakasız ürün göstermek yerine dürüst cevap
+    if parsed["unavailable"]:
+        return {
+            "parsed": parsed,
+            "weather": None,
+            "weather_text": "",
+            "message": f"Katalogda {parsed['unavailable']} yok. Bu arama 1097 giyim ve ayakkabı ürünü üzerinde çalışıyor.",
+            "results": [],
+        }
+
     weather = get_weather(parsed["city"])
     weather_text = describe_weather(weather)
 
@@ -119,26 +148,24 @@ def search(session, query, limit=10, city=None, max_price=None):
     vector = _cached_vector(search_text)
 
     conditions = build_filters(parsed)
-    ids = reciprocal_rank_fusion(
-        [
-            vector_candidates(session, vector, conditions),
-            keyword_candidates(session, parsed["text"], conditions),
-        ]
-    )
+    # Yalnızca vektör: eval/run_eval ölçümünde kelime kolunu eklemek sonucu bozuyordu
+    # (vektör P@5 %74, hibrit %70; ağırlık artırmak bile fark kapatmadı, 23 Eylül 2026).
+    ids = vector_candidates(session, vector, conditions)
 
     # Filtreler hiç sonuç bırakmadıysa fiyat dışındakileri gevşet
     if not ids and conditions:
         price_only = build_filters({**parsed, "color": None, "category": None, "gender": None})
-        ids = reciprocal_rank_fusion(
-            [
-                vector_candidates(session, vector, price_only),
-                keyword_candidates(session, parsed["text"], price_only),
-            ]
-        )
+        ids = vector_candidates(session, vector, price_only)
 
     ids = ids[:limit]
     if not ids:
-        return {"parsed": parsed, "weather": weather, "weather_text": weather_text, "results": []}
+        return {
+            "parsed": parsed,
+            "weather": weather,
+            "weather_text": weather_text,
+            "message": "Bu cümleye uyan ürün bulunamadı.",
+            "results": [],
+        }
 
     products = session.scalars(select(Product).where(Product.id.in_(ids))).all()
     by_id = {product.id: product for product in products}
@@ -148,6 +175,7 @@ def search(session, query, limit=10, city=None, max_price=None):
         "parsed": parsed,
         "weather": weather,
         "weather_text": weather_text,
+        "message": "",
         "results": [
             {
                 "trendyol_id": product.trendyol_id,

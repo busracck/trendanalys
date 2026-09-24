@@ -256,7 +256,21 @@ Hedef: ~1000-1500 ürün, doğrudan veritabanına. `search_text` ve `embedding` 
   - `.env` ve `.env.example` dosyalarına `JWT_SECRET`
   - `POST /api/auth/register`, `POST /api/auth/login` (30 dk token), `POST /api/auth/logout`, `GET /api/users/me`
 - [ ] **Adım 5.7:** Giriş yapmış kullanıcı özellikleri: arama geçmişi, `default_city`, `POST/DELETE /api/favorites/{product_id}`.
-- [ ] **Adım 5.8:** `eval/run_eval.py`'yi üç modu karşılaştıracak şekilde genişlet: sadece kelime / sadece vektör / hibrit.
+- [x] **Adım 5.8:** `eval/run_eval.py` üç modu karşılaştırıyor: kelime / vektör / hibrit (+ ağırlıklı hibrit deneyleri).
+  - `eval/label.py`: adayları havuzlayıp elle etiketlemeyi sağlayan yardımcı (üç modun ilk 8'i birleştirilir).
+  - **Ölçüm (24 Eylül 2026, 1097 ürün, 10 etiketli sorgu, ilk 5 sonuç):**
+
+    | mod | 1. sıra | Precision@5 | Recall@5 | MRR |
+    |---|---|---|---|---|
+    | kelime (full-text) | %80 | %54 | %60 | 0.90 |
+    | **vektör (pgvector)** | **%90** | **%74** | **%80** | **0.93** |
+    | hibrit (RRF 1:1) | %70 | %70 | %76 | 0.81 |
+    | hibrit (RRF 3:1) | %80 | %70 | %76 | 0.90 |
+    | hibrit (RRF 10:1) | %90 | %70 | %76 | 0.93 |
+
+  - **Karar: varsayılan arama yalnızca vektör + filtreler.** Kelime kolu her ağırlıkta doğru ürünleri aşağı itti, hiçbir metrikte katkı vermedi. `keyword_candidates` ve `tsv` sütunu duruyor; ölçüm karşılaştırması onları kullanıyor.
+  - Kelime araması `plainto_tsquery` ile 11 sorgunun 7'sinde 0 sonuç veriyordu (bütün kelimeleri VE ile bağlıyor); `websearch_to_tsquery` + VEYA'ya çevrildi, ondan sonra adil karşılaştırma yapıldı.
+  - **Açık nokta:** 10 sorgu küçük bir örneklem. Marka/model kodu aramalarında ("Puma 372605") kelime kolu işe yarayabilir, test setinde öyle sorgu yok.
 - **Çıkış kriteri:** `POST /api/search` cümleyle arama yapıyor, filtreler ve hava durumu çalışıyor, giriş yapan kullanıcı favori ekleyebiliyor.
 
 ### Ara Aşama: Senior Reviewer Agent — ⏸️ Aşama 1'den taşındı
@@ -291,17 +305,17 @@ Aşama 5 bittikten sonra yapılır. Anthropic API anahtarı gerekir (Claude abon
   - **GPU uyarısı:** 4 GB VRAM'e modelin tek kopyası sığıyor. `uvicorn` açıkken `build_embeddings`/`run_eval` çalıştırılamaz. `get_model` artık OOM'da CPU'ya düşüyor.
   - **Veri dersi:** "erkek pantolon" sorgusu alakasız sonuç verdi, çünkü katalogda pantolon yoktu. Kategori eklendi (`erkek-pantolon` 100, `kadin-pantolon` yarım). Yeni ürün çekince `build_embeddings` çalıştırmak şart, yoksa ürün aramada görünmez.
 - [ ] **Adım 6.5:** "Neden önerildi" metnini ürüne özgü hâle getir (eşleşen özellikler: kapüşonlu, su geçirmez…).
+- [x] Katalogda olmayan tür sorulunca dürüst cevap: `query_parser.find_unavailable` + `search` erken dönüş + arayüzde mesaj. Ana sayfada katalog satırı veritabanından üretiliyor.
+  - Ayrım tuzakları: "ayakkabı" tek başına spor ayakkabıya eşlenmiyordu ("topuklu ayakkabı" yanlış yakalanıyordu); "krem" renk adı, "triko" katalogdaki triko elbiselerle çakışıyor — ikisi de listeden çıkarıldı.
 - [ ] **Adım 6.6:** Favori butonu ve giriş/kayıt modalı (Adım 5.6-5.7 bittikten sonra).
 - **Çıkış kriteri:** Tarayıcıdan cümle yazılıp ürün kartları görülebiliyor, telefonda da düzgün görünüyor.
 
 ### Aşama 7: Değerlendirme, Optimizasyon ve Dokümantasyon — 🔄 Güncellendi
-- [ ] `eval/queries.yaml` hazırla: 30-40 gerçekçi cümle ve her biri için elle işaretlenmiş alakalı ürünler.
-- [ ] `eval/run_eval.py` yaz:
-  - üç modu karşılaştır: **sadece kelime** / **sadece vektör** / **hibrit + hava durumu**
-  - Recall@5 ve MRR ölç
+- [ ] `eval/queries.yaml`'ı 25-30 sorguya çıkar (şu an 11). Yeni kategoriler (pantolon, bot) için sorgu yok; kısıtlı sorgular tercih edilmeli (renk + fiyat + kullanım amacı).
+- [x] `eval/run_eval.py` yazıldı: üç mod, 1. sıra / Precision@5 / Recall@5 / MRR. Recall paydası `min(doğru sayısı, 5)` — 13 doğru cevabı olan sorguda ilk 5'te 5 doğru bulmak %100 sayılır.
 - [ ] Reviewer Agent ile son tarama: Ara Aşama'daki taramadan sonra yazılan kod (Aşama 6 dahil). Blocker ve major bulguları refactor et.
 - [ ] Performans testi yap:
   - p50/p95 ölç (hedef: CPU'da arama p95 < 300 ms)
   - darboğazı raporla (embedding / DB / hava durumu)
 - [ ] Swagger açıklamalarını tamamla (`summary`, `response_model`, `examples`).
-- [ ] README yaz: kurulum, mimari şema, eval tablosu, ekran görüntüleri, scraping etiği.
+- [x] README yazıldı (24 Eylül 2026): ekran görüntüsü, ölçüm tablosu ve hibritin neden kaldırıldığı, mimari şema, kurulum, kullanım, veri/etik, bilinen sınırlar.

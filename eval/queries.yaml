@@ -1,42 +1,101 @@
 # Arama kalitesini ölçen test sorguları.
 # expected: doğru kabul edilen trendyol_id listesi.
 #
-# UYARI: Bu etiketler Aşama 0'daki 19 ürünlük havuza göre yapıldı. Havuz 898 ürüne
-# çıktığı için listede olmayan bir ürün de doğru cevap olabilir; sayılar gerçek
-# başarıyı olduğundan düşük gösterir. Aşama 7'de bütün havuza göre yeniden etiketlenecek.
+# Etiketler `python -m eval.label` ile, üç modun adayları havuzlanarak seçildi.
 
 - query: spor salonuna giderken giyeceğim ayakkabı
-  expected: ["42713792"]
-
+  expected:
+  - '1135168303'
+  - '819543890'
+  - '710387373'
+  - '797327536'
+  - '46903492'
+  - '46675548'
+  - '90366675'
+  - '898623761'
+  - '1090522117'
+  - '857563214'
+  - '1090501961'
+  - '1149835002'
 - query: kapüşonlu şişme mont
-  expected: ["1071479043", "1073371103", "1100119387", "849095967"]
-
+  expected:
+  - '1040901404'
+  - '797711181'
+  - '197926375'
+  - '980852499'
+  - '969089326'
+  - '980815007'
+  - '963071606'
+  - '340487075'
+  - '991888114'
+  - '813447171'
+  - '1199239137'
+  - '355897082'
+  - '1059523017'
 - query: düğmeli mont
-  expected: ["977379012", "987847941"]
-
+  expected:
+  - '977379012'
+  - '987847941'
+  - '1045579711'
 - query: yeşil renkli mont
-  expected: ["1144525931", "879026670"]
-
+  expected:
+  - '805363948'
+  - '1056634086'
+  - '853837907'
+  - '1144525931'
+  - '984498720'
 - query: süet ceket
-  expected: ["450350040"]
-
+  expected:
+  - '783953377'
+  - '1179711657'
+  - '763822876'
+  - '1034669612'
+  - '860815465'
+  - '1180932287'
 - query: erkek arkadaşıma hediye alacağım tişört
-  expected: ["946802869"]
-
+  expected:
+  - '946802869'
+  - '1194225071'
+  - '1116277472'
+  - '1201326662'
 - query: yağmur geçirmeyen kaban
-  expected: ["1073371103", "1100119387", "856865482", "977379012", "985084456"]
-
-# Yazım hatası bilerek bırakıldı
+  expected:
+  - '969089326'
+  - '662099887'
+  - '830635831'
+  - '985084456'
+  - '1196790097'
+  - '879224957'
+  - '824659146'
+  - '1070970182'
+  - '792185426'
+  - '1041542916'
 - query: deri cekt
-  expected: ["1080965079", "450350040"]
-
-# İngilizce sorgu
+  expected:
+  - '1079557737'
+  - '167368702'
+  - '873309696'
+  - '890623909'
+  - '1080965079'
+  - '1122466254'
+  - '1039255390'
+  - '892386033'
 - query: white sneakers
-  expected: ["42713792"]
-
+  expected:
+  - '797327536'
+  - '248217491'
+  - '795698037'
+  - '35663900'
+  - '946437995'
+  - '1149835002'
 - query: içi peluşlu sıcak tutan mont
-  expected: ["1080965079", "879026670", "977379012"]
-
-# Böyle bir ürün yok: en yüksek skorun düşük kalması beklenir
+  expected:
+  - '860815465'
+  - '989603321'
+  - '985995979'
+  - '1019008353'
+  - '1143489741'
+  - '977379012'
+  - '994095662'
 - query: laptop çantası
   expected: []
