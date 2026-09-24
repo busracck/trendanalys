@@ -18,7 +18,7 @@ from urllib3.exceptions import HTTPError as Urllib3HTTPError
 from app.db import SessionLocal
 from app.models import Product, ReviewSnippet
 from scraper.category_crawler import collect_category_links
-from scraper.cleaner import clean_text, content_hash
+from scraper.cleaner import clean_text, content_hash, normalize_color, normalize_gender
 from scraper.driver import create_driver, restart_driver
 from scraper.product_parser import get_product_html, parse_product_html
 
@@ -43,8 +43,12 @@ def load_categories():
 
 
 def clean_product(data):
-    for field in ("name", "brand", "color", "gender"):
+    for field in ("name", "brand"):
         data[field] = clean_text(data.get(field)) or None
+
+    # Renk ve cinsiyet filtrede kullanılacak: tek biçime indiriliyor
+    data["color"] = normalize_color(data.get("color"))
+    data["gender"] = normalize_gender(data.get("gender"))
 
     data["attributes"] = {
         key: clean_text(value) for key, value in (data.get("attributes") or {}).items()

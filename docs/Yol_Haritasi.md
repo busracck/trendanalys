@@ -223,36 +223,42 @@ Hedef: ~1000-1500 ürün, doğrudan veritabanına. `search_text` ve `embedding` 
   - **Eşik doğrulaması:** alakasız "laptop çantası" sorgusunun en yakın mesafesi 0.454; doğru cevabı 0.491 mesafede olan sorgular var. Sabit eşik kullanılamaz.
 
 ### Aşama 5: FastAPI Backend — 🔄 Güncellendi
-- [ ] `app/services/query_parser.py` yaz:
+- [x] **Adım 5.1:** Veri normalizasyonu (filtreler bunsuz çalışmaz).
+  - `gender`: `male/female/unisex` ve `Kadın/Erkek/Unisex` karışık → `kadin/erkek/unisex`.
+  - `color`: `Siyah / SİYAH / siyah / Siyah-BK27` karışık → bilinen ana renge eşle, bulunamazsa Türkçe küçük harf.
+  - `scraper/cleaner.py`'ye `normalize_gender` ve `normalize_color` eklenir (yeni taramalar için), mevcut satırlar Alembic veri migrasyonuyla düzeltilir.
+- [x] **Adım 5.2:** `app/services/query_parser.py`:
   - 81 il adını Türkçe ekleriyle yakala ("İzmir'de", "Ankara'ya")
   - fiyat ifadelerini yakala ("1000 TL altı", "500-1000 arası")
-  - kategori ipuçlarını sözlükten bul
-  - renk ifadelerini (beyaz, siyah, bej…) yakalayıp `Renk` özelliğine filtre olarak uygula. Adım 0.4'te bge-m3, "beyaz mont" sorgusunda Bianco/Blanco marka adlarına kanmıştı.
-- [ ] `app/services/weather.py` yaz:
-  - Open-Meteo'dan anlık veya akşam (19-22) tahminini al
-  - sonucu 30 dk TTL cache'de tut
-  - sıcaklık/yağış/rüzgar değerlerini ifadelere çevir (ör. "serin hava, uzun kollu, katmanlı giyim")
-- [ ] `app/services/search.py` yaz:
-  - fiyat/kategori filtresi uygula
-  - vektör top-50 ve full-text top-50 sonuçlarını RRF ile birleştir
+  - renk ifadelerini yakala → SQL filtresi (Adım 4.4'teki "river green" hatası bu yüzden)
+  - kategori ipuçlarını `categories.yaml` adlarına eşle (elbise, mont, sweatshirt, tişört, bot, spor ayakkabı)
+- [x] **Adım 5.3:** `app/services/weather.py`:
+  - Open-Meteo'dan anlık veya akşam (19-22) tahminini al (şehir koordinatı için geocoding API, sonuç cache'lenir)
+  - 30 dk TTL cache
+  - sıcaklık/yağış/rüzgar değerlerini ifadelere çevir ("serin hava, uzun kollu, katmanlı giyim")
+- [x] **Adım 5.4:** `app/services/search.py`:
+  - filtreler: fiyat, renk, kategori, cinsiyet
+  - vektör top-50 (`<=>`) + full-text top-50 (`tsv`, `turkish`) → RRF ile birleştir
   - "neden önerildi" alanını üret
   - sorgu embedding'ini LRU cache'de tut
-  - alakasız sorgular için sabit skor eşiği kullanma (Adım 0.4'teki "laptop çantası" bulgusu). "Sonuç yok" kararını kategori eşleşmesine ve kelime araması sinyaline göre ver.
-- [ ] Pydantic şemalarını `app/schemas.py` dosyasına yaz (`from_attributes=True`). Aşama 2'den taşındı.
-- [ ] `POST /api/search` endpoint'ini yaz: `{query, city?, max_price?, limit}`
-- [ ] Kullanıcı tablolarını yeni bir Alembic migrasyonuyla ekle (Aşama 2'den taşındı):
-  - `User`: id, email, password_hash, default_city, created_at
-  - `SearchHistory`, `Favorite`, `RevokedToken` (jti, expires_at)
-- [ ] JWT auth endpoint'lerini yaz (`.env` ve `.env.example` dosyalarına `JWT_SECRET` ekle):
-  - `POST /api/auth/register`
-  - `POST /api/auth/login` (30 dk token)
-  - `POST /api/auth/logout` (jti → RevokedToken)
-  - `GET /api/users/me`
-- [ ] Giriş yapmış kullanıcı özelliklerini ekle:
-  - arama geçmişi
-  - `default_city`
-  - `POST/DELETE /api/favorites/{product_id}`
-- [ ] `GET /api/products/{id}` ve `GET /health` endpoint'lerini ekle.
+  - alakasız sorgular için sabit skor eşiği kullanma (Adım 4.4 bulgusu: alakasız sorgunun en yakın mesafesi 0.454, doğru cevabı 0.491 olan sorgu var)
+- Adım 5.1-5.4 sonuçları (23 Eylül 2026):
+  - Veri normalizasyonu migrasyonu `b46bc16a7e20`: `siyah` 316, `kadin` 621 / `erkek` 262 / `unisex` 15.
+  - **Renk filtresi katı olamıyor:** "Ltb ... Yeşil Mont" ürününün `color` sütunu `haki`, 117 üründe renk hiç yok. Filtre renk ailesi (yeşil-haki, beyaz-ekru-krem…) VEYA ürün adı üzerinden çalışıyor.
+  - Uçtan uca ilk çalışma başarılı: "yağmurda ıslanmayan kapüşonlu mont" → su geçirmez montlar; "İzmir'de 1500 TL altı elbise" → fiyat ve kategori filtreleri tuttu, hava durumu ifadesi eklendi.
+  - **Bilinen eksik:** "kışın giyeceğim" gibi gelecek zaman ifadelerinde bugünün havası kullanılıyor. Aşama 7'de ele alınacak.
+- [x] **Adım 5.5:** `app/schemas.py` ve `POST /api/search` (`{query, city?, max_price?, limit}`), `GET /api/products/{id}`, `GET /health`.
+- API çalışıyor (24 Eylül 2026): `/health`, `POST /api/search`, `GET /api/products/{id}`, Swagger `/docs`.
+  - Pydantic doğrulaması kapıda tutuyor: 2 harften kısa sorgu 422 dönüyor.
+  - İlk istek ~25 sn (model o anda yükleniyor). Aşama 6'da açılışta yüklenecek.
+  - **Eksik:** `why` alanı sorgunun filtrelerini yazıyor, ürüne özgü değil. Aşama 6'da eşleşen özellikler eklenecek.
+- [ ] **Adım 5.6:** Kullanıcı tabloları (Aşama 2'den taşındı) + JWT auth:
+  - `User`, `SearchHistory`, `Favorite`, `RevokedToken` (jti, expires_at) — yeni Alembic migrasyonu
+  - `.env` ve `.env.example` dosyalarına `JWT_SECRET`
+  - `POST /api/auth/register`, `POST /api/auth/login` (30 dk token), `POST /api/auth/logout`, `GET /api/users/me`
+- [ ] **Adım 5.7:** Giriş yapmış kullanıcı özellikleri: arama geçmişi, `default_city`, `POST/DELETE /api/favorites/{product_id}`.
+- [ ] **Adım 5.8:** `eval/run_eval.py`'yi üç modu karşılaştıracak şekilde genişlet: sadece kelime / sadece vektör / hibrit.
+- **Çıkış kriteri:** `POST /api/search` cümleyle arama yapıyor, filtreler ve hava durumu çalışıyor, giriş yapan kullanıcı favori ekleyebiliyor.
 
 ### Ara Aşama: Senior Reviewer Agent — ⏸️ Aşama 1'den taşındı
 Aşama 5 bittikten sonra yapılır. Anthropic API anahtarı gerekir (Claude aboneliğinden ayrı, kullanım başına ücretli). Yazarken `claude-api` skill'i yüklenir.
