@@ -251,27 +251,10 @@ Hedef: ~1000-1500 ürün, doğrudan veritabanına. `search_text` ve `embedding` 
   - Pydantic doğrulaması kapıda tutuyor: 2 harften kısa sorgu 422 dönüyor.
   - İlk istek ~25 sn (model o anda yükleniyor). Aşama 6'da açılışta yüklenecek.
   - **Eksik:** `why` alanı sorgunun filtrelerini yazıyor, ürüne özgü değil. Aşama 6'da eşleşen özellikler eklenecek.
-- [ ] **Adım 5.6:** Kullanıcı tabloları (Aşama 2'den taşındı) + JWT auth:
-  - `User`, `SearchHistory`, `Favorite`, `RevokedToken` (jti, expires_at) — yeni Alembic migrasyonu
-  - `.env` ve `.env.example` dosyalarına `JWT_SECRET`
-  - `POST /api/auth/register`, `POST /api/auth/login` (30 dk token), `POST /api/auth/logout`, `GET /api/users/me`
-- [ ] **Adım 5.7:** Giriş yapmış kullanıcı özellikleri: arama geçmişi, `default_city`, `POST/DELETE /api/favorites/{product_id}`.
-- [x] **Adım 5.8:** `eval/run_eval.py` üç modu karşılaştırıyor: kelime / vektör / hibrit (+ ağırlıklı hibrit deneyleri).
-  - `eval/label.py`: adayları havuzlayıp elle etiketlemeyi sağlayan yardımcı (üç modun ilk 8'i birleştirilir).
-  - **Ölçüm (24 Eylül 2026, 1097 ürün, 10 etiketli sorgu, ilk 5 sonuç):**
-
-    | mod | 1. sıra | Precision@5 | Recall@5 | MRR |
-    |---|---|---|---|---|
-    | kelime (full-text) | %80 | %54 | %60 | 0.90 |
-    | **vektör (pgvector)** | **%90** | **%74** | **%80** | **0.93** |
-    | hibrit (RRF 1:1) | %70 | %70 | %76 | 0.81 |
-    | hibrit (RRF 3:1) | %80 | %70 | %76 | 0.90 |
-    | hibrit (RRF 10:1) | %90 | %70 | %76 | 0.93 |
-
-  - **Karar: varsayılan arama yalnızca vektör + filtreler.** Kelime kolu her ağırlıkta doğru ürünleri aşağı itti, hiçbir metrikte katkı vermedi. `keyword_candidates` ve `tsv` sütunu duruyor; ölçüm karşılaştırması onları kullanıyor.
-  - Kelime araması `plainto_tsquery` ile 11 sorgunun 7'sinde 0 sonuç veriyordu (bütün kelimeleri VE ile bağlıyor); `websearch_to_tsquery` + VEYA'ya çevrildi, ondan sonra adil karşılaştırma yapıldı.
-  - **Açık nokta:** 10 sorgu küçük bir örneklem. Marka/model kodu aramalarında ("Puma 372605") kelime kolu işe yarayabilir, test setinde öyle sorgu yok.
-- **Çıkış kriteri:** `POST /api/search` cümleyle arama yapıyor, filtreler ve hava durumu çalışıyor, giriş yapan kullanıcı favori ekleyebiliyor.
+- ❌ **Adım 5.6-5.7 kapsam dışı bırakıldı (24 Eylül 2026):** kullanıcı hesapları, JWT, favoriler, arama geçmişi.
+  - Gerekçe: favori listesi ve hesap yönetimi Trendyol'un kendi işlevleri. Bu proje bir **arama katmanı**; ürünü bulup Trendyol'a yönlendiriyor. Kullanıcıyı ikinci bir hesap açmaya zorlamak ürüne değer katmaz.
+  - `User`, `Favorite`, `SearchHistory`, `RevokedToken` tabloları yazılmadı; `JWT_SECRET` ayarı gerekmiyor.
+- **Çıkış kriteri:** `POST /api/search` cümleyle arama yapıyor, filtreler ve hava durumu çalışıyor. ✅ **Aşama 5 tamamlandı (24 Eylül 2026).**
 
 ### Ara Aşama: Senior Reviewer Agent — ⏸️ Aşama 1'den taşındı
 Aşama 5 bittikten sonra yapılır. Anthropic API anahtarı gerekir (Claude aboneliğinden ayrı, kullanım başına ücretli). Yazarken `claude-api` skill'i yüklenir.
@@ -304,18 +287,19 @@ Aşama 5 bittikten sonra yapılır. Anthropic API anahtarı gerekir (Claude abon
   - Tasarım kararı: vurgu rengi hava sıcaklığına göre değişiyor; ayrıştırılan filtreler kullanıcıya gösteriliyor.
   - **GPU uyarısı:** 4 GB VRAM'e modelin tek kopyası sığıyor. `uvicorn` açıkken `build_embeddings`/`run_eval` çalıştırılamaz. `get_model` artık OOM'da CPU'ya düşüyor.
   - **Veri dersi:** "erkek pantolon" sorgusu alakasız sonuç verdi, çünkü katalogda pantolon yoktu. Kategori eklendi (`erkek-pantolon` 100, `kadin-pantolon` yarım). Yeni ürün çekince `build_embeddings` çalıştırmak şart, yoksa ürün aramada görünmez.
-- [ ] **Adım 6.5:** "Neden önerildi" metnini ürüne özgü hâle getir (eşleşen özellikler: kapüşonlu, su geçirmez…).
+- [x] **Adım 6.5:** "Neden önerildi" ürüne özgü: kullanıcının kelimeleri ürün adında/özelliklerinde aranıyor (Türkçe ekler yüzünden ilk 5 harf karşılaştırılıyor). Ortak kelime yoksa "kelime eşleşmesi yok, anlamca yakın" yazıyor.
 - [x] Katalogda olmayan tür sorulunca dürüst cevap: `query_parser.find_unavailable` + `search` erken dönüş + arayüzde mesaj. Ana sayfada katalog satırı veritabanından üretiliyor.
   - Ayrım tuzakları: "ayakkabı" tek başına spor ayakkabıya eşlenmiyordu ("topuklu ayakkabı" yanlış yakalanıyordu); "krem" renk adı, "triko" katalogdaki triko elbiselerle çakışıyor — ikisi de listeden çıkarıldı.
-- [ ] **Adım 6.6:** Favori butonu ve giriş/kayıt modalı (Adım 5.6-5.7 bittikten sonra).
+- ❌ **Adım 6.6 kapsam dışı:** favori butonu ve giriş modalı. Adım 5.6-5.7 ile aynı gerekçe.
 - **Çıkış kriteri:** Tarayıcıdan cümle yazılıp ürün kartları görülebiliyor, telefonda da düzgün görünüyor.
 
 ### Aşama 7: Değerlendirme, Optimizasyon ve Dokümantasyon — 🔄 Güncellendi
 - [ ] `eval/queries.yaml`'ı 25-30 sorguya çıkar (şu an 11). Yeni kategoriler (pantolon, bot) için sorgu yok; kısıtlı sorgular tercih edilmeli (renk + fiyat + kullanım amacı).
 - [x] `eval/run_eval.py` yazıldı: üç mod, 1. sıra / Precision@5 / Recall@5 / MRR. Recall paydası `min(doğru sayısı, 5)` — 13 doğru cevabı olan sorguda ilk 5'te 5 doğru bulmak %100 sayılır.
 - [ ] Reviewer Agent ile son tarama: Ara Aşama'daki taramadan sonra yazılan kod (Aşama 6 dahil). Blocker ve major bulguları refactor et.
-- [ ] Performans testi yap:
-  - p50/p95 ölç (hedef: CPU'da arama p95 < 300 ms)
-  - darboğazı raporla (embedding / DB / hava durumu)
-- [ ] Swagger açıklamalarını tamamla (`summary`, `response_model`, `examples`).
+- [x] Performans testi (`eval/benchmark.py`, 24 Eylül 2026, CPU, 11 sorgu × 3 tur):
+  - ayrıştırma 0.2 ms · embedding 71 ms (p95 81) · SQL 2.9 ms (p95 6) · toplam ortanca 6 ms, p95 80 ms.
+  - Toplam ortancanın embedding'den küçük olmasının sebebi `_cached_vector` LRU önbelleği: tekrar eden cümlede model çalışmıyor.
+  - Hedef p95 < 300 ms'ti, CPU'da bile karşılandı. Darboğaz embedding (~%90); SQL, HNSW index sayesinde 3 ms.
+- [x] Swagger tamamlandı: uçlara `summary`, açıklama ve örnek istekler, `openapi_tags` (arama / ürün / sistem). Ana sayfa şemadan çıkarıldı.
 - [x] README yazıldı (24 Eylül 2026): ekran görüntüsü, ölçüm tablosu ve hibritin neden kaldırıldığı, mimari şema, kurulum, kullanım, veri/etik, bilinen sınırlar.

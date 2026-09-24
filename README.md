@@ -45,6 +45,21 @@ Cümleden çıkarılan her bilgi arayüzde gösteriliyor ("cümleden anladığı
 
 **Neden bazı bilgiler filtreye alınıyor?** Fiyat ve renk vektöre bırakılamıyor: model "1000 TL altı"nı anlamıyor, "yeşil" arayana `river green` markalı siyah montu getiriyor. Bunlar SQL filtresi olarak çalışıyor. Renk filtresi de katı değil: "Yeşil Mont" adlı ürünün renk sütununda `haki` yazabiliyor, 117 üründe renk hiç yok — filtre renk ailesi (yeşil-haki) veya ürün adı üzerinden eşleştiriyor.
 
+## Performans
+
+11 sorgu × 3 tur, model CPU'da, 1097 ürünlük katalog:
+
+| adım | ortanca | p95 |
+|---|---|---|
+| cümle ayrıştırma | 0.2 ms | 0.2 ms |
+| embedding (sorgu → vektör) | 71 ms | 81 ms |
+| SQL (vektör araması + filtreler) | 2.9 ms | 6 ms |
+| **toplam arama** | **6 ms** | **80 ms** |
+
+Toplam ortanca embedding'den küçük, çünkü sorgu vektörleri LRU önbellekte tutuluyor: aynı cümle ikinci kez arandığında model hiç çalışmıyor. Yeni bir cümle ~80 ms, tekrar eden cümle ~6 ms sürüyor.
+
+Darboğaz embedding (toplam sürenin ~%90'ı). Vektör araması HNSW index sayesinde 3 ms'de bitiyor. Ölçüm `python -m eval.benchmark` ile tekrarlanabilir.
+
 ## Teknolojiler
 
 | Katman | Ne kullanıldı |
@@ -117,7 +132,7 @@ python -m eval.label              # test sorgularını elle etiketle
 - **Ölçüm 10 sorguluk.** Yön gösterir ama küçük bir örneklem; sorgu sayısı artırılmalı.
 - **Katalog 7 türle sınırlı.** Kullanıcı olmayan bir tür sorarsa sistem alakasız ürün göstermek yerine "katalogda çanta yok" der.
 - **Zaman ifadeleri.** "Kışın giyeceğim mont" denildiğinde bugünün havası kullanılıyor, gelecek mevsim değil.
-- **"Neden önerildi" satırı** sorgunun filtrelerini yazıyor, ürüne özgü değil.
+- **Eşleşme açıklaması kelime temelli.** "Neden önerildi" satırı kullanıcının kelimelerinin ürün adında geçip geçmediğine bakıyor; anlamsal eşleşmenin *hangi* kavramdan geldiğini söyleyemiyor.
 - **Marka/model kodu aramaları** ("Puma 372605") test edilmedi; orada kelime araması daha iyi olabilir.
 
 ## Proje geçmişi

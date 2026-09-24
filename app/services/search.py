@@ -7,6 +7,7 @@ from sqlalchemy import func, or_, select
 from app.models import Product
 from app.services.embedder import encode_query
 from app.services.query_parser import parse_query
+from scraper.cleaner import turkish_lower
 from app.services.weather import describe_weather, get_weather
 
 # Her iki aramadan kaç aday alınacağı
@@ -108,17 +109,51 @@ def reciprocal_rank_fusion(rankings, weights=None, k=RRF_K):
     return sorted(scores, key=scores.get, reverse=True)
 
 
+# Eşleşme ararken atlanacak, ayırt edici olmayan kelimeler
+STOP_WORDS = {
+    "için", "bir", "bana", "kadar", "gibi", "olan", "daha", "çok", "arıyorum",
+    "lazım", "istiyorum", "giyeceğim", "giyilecek", "alacağım", "şey",
+}
+
+# Türkçe ekler yüzünden tam eşleşme aramıyoruz: kelimenin ilk harfleri yeterli
+STEM_LENGTH = 5
+MAX_MATCHES = 3
+
+
+def matching_terms(product, text):
+    """Kullanıcının kelimelerinden ürün adında/özelliklerinde geçenleri bulur."""
+    haystack = turkish_lower(
+        " ".join([product.name or "", " ".join((product.attributes or {}).values())])
+    )
+
+    matches = []
+    for word in turkish_lower(text).split():
+        if len(word) < 4 or word in STOP_WORDS:
+            continue
+        if word[:STEM_LENGTH] in haystack and word not in matches:
+            matches.append(word)
+
+    return matches[:MAX_MATCHES]
+
+
 def explain(product, parsed, weather_text):
-    """Ürün kartında gösterilecek "neden önerildi" satırı."""
+    """Ürün kartındaki "neden önerildi" satırı. Her ürün için ayrı hesaplanır."""
     reasons = []
-    if parsed["category"]:
-        reasons.append(f"kategori: {product.category}")
+
+    matches = matching_terms(product, parsed["text"])
+    if matches:
+        reasons.append(", ".join(matches))
+    else:
+        # Ortak kelime yok ama vektör yakın buldu: anlamsal aramanın işi tam olarak bu
+        reasons.append("kelime eşleşmesi yok, anlamca yakın")
+
+    if parsed["max_price"] and product.price is not None:
+        reasons.append(f"{int(product.price)} TL")
     if parsed["color"] and product.color:
-        reasons.append(f"renk: {product.color}")
-    if parsed["max_price"]:
-        reasons.append(f"{parsed['max_price']} TL altı")
+        reasons.append(product.color)
     if weather_text:
         reasons.append(weather_text)
+
     return " · ".join(reasons)
 
 
