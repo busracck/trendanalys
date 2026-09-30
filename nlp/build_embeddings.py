@@ -32,7 +32,7 @@ def embed_chunk(chunk):
     vectors = encode_passages(texts, show_progress_bar=False)
     now = datetime.now(timezone.utc)
 
-    for product, text, vector in zip(chunk, texts, vectors):
+    for product, text, vector in zip(chunk, texts, vectors, strict=True):
         product.search_text = text
         product.embedding = vector
         product.embedded_at = now

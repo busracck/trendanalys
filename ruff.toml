@@ -1,0 +1,27 @@
+# ruff ayarları. Kurallar: agents/review_guidelines.md
+line-length = 100
+
+[lint]
+select = [
+    "E",    # pycodestyle hataları
+    "F",    # pyflakes: kullanılmayan import, tanımsız isim
+    "I",    # import sıralaması
+    "B",    # bugbear: sık yapılan mantık hataları
+    "S",    # bandit: güvenlik
+    "RUF",  # ruff'un kendi kuralları
+]
+
+ignore = [
+    # Türkçe karakterleri (ı, ş, ğ) "şüpheli unicode" sayıyor; proje Türkçe
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[lint.per-file-ignores]
+# FastAPI'nin bağımlılık kalıbı: Depends() varsayılan değerde kullanılır
+"app/main.py" = ["B008"]
+# Reviewer git/ruff/bandit'i çalıştırmak zorunda; komutlar sabit liste, shell yok
+"agents/reviewer.py" = ["S404", "S603"]
+# Alembic'in ürettiği dosyalar
+"alembic/*" = ["E501", "I001"]

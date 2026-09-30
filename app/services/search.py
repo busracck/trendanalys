@@ -7,8 +7,8 @@ from sqlalchemy import func, or_, select
 from app.models import Product
 from app.services.embedder import encode_query
 from app.services.query_parser import parse_query
-from scraper.cleaner import turkish_lower
 from app.services.weather import describe_weather, get_weather
+from scraper.cleaner import turkish_lower
 
 # Her iki aramadan kaç aday alınacağı
 CANDIDATE_LIMIT = 50
@@ -103,7 +103,7 @@ def reciprocal_rank_fusion(rankings, weights=None, k=RRF_K):
         weights = [1.0] * len(rankings)
 
     scores = {}
-    for ranking, weight in zip(rankings, weights):
+    for ranking, weight in zip(rankings, weights, strict=False):
         for position, product_id in enumerate(ranking, start=1):
             scores[product_id] = scores.get(product_id, 0) + weight / (k + position)
     return sorted(scores, key=scores.get, reverse=True)
@@ -111,8 +111,21 @@ def reciprocal_rank_fusion(rankings, weights=None, k=RRF_K):
 
 # Eşleşme ararken atlanacak, ayırt edici olmayan kelimeler
 STOP_WORDS = {
-    "için", "bir", "bana", "kadar", "gibi", "olan", "daha", "çok", "arıyorum",
-    "lazım", "istiyorum", "giyeceğim", "giyilecek", "alacağım", "şey",
+    "için",
+    "bir",
+    "bana",
+    "kadar",
+    "gibi",
+    "olan",
+    "daha",
+    "çok",
+    "arıyorum",
+    "lazım",
+    "istiyorum",
+    "giyeceğim",
+    "giyilecek",
+    "alacağım",
+    "şey",
 }
 
 # Türkçe ekler yüzünden tam eşleşme aramıyoruz: kelimenin ilk harfleri yeterli
@@ -171,7 +184,10 @@ def search(session, query, limit=10, city=None, max_price=None):
             "parsed": parsed,
             "weather": None,
             "weather_text": "",
-            "message": f"Katalogda {parsed['unavailable']} yok. Bu arama 1097 giyim ve ayakkabı ürünü üzerinde çalışıyor.",
+            "message": (
+                f"Katalogda {parsed['unavailable']} yok. "
+                "Bu arama giyim ve ayakkabı ürünleri üzerinde çalışıyor."
+            ),
             "results": [],
         }
 

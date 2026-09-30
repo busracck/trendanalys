@@ -1,6 +1,6 @@
+import json
 import re
 from pathlib import Path
-import json
 
 from bs4 import BeautifulSoup
 
@@ -68,7 +68,7 @@ def parse_product_html(html):
     if isinstance(images, str):
         images = [images]
 
-    ratings= product.get("aggregateRating", {})
+    ratings = product.get("aggregateRating", {})
 
     return {
         "trendyol_id": product.get("sku"),
@@ -84,8 +84,7 @@ def parse_product_html(html):
         "rating": ratings.get("ratingValue"),
         "rating_count": ratings.get("ratingCount"),
         "review_count": ratings.get("reviewCount"),
-        "reviews": parse_reviews(product)
-
+        "reviews": parse_reviews(product),
     }
 
 
@@ -93,17 +92,19 @@ def parse_reviews(product_block):
     reviews = []
     for review in product_block.get("review", []):
         text = review.get("reviewBody")
-        
+
         # Eğer yorum metni boşsa (None veya boş string) bu yorumu atla
         if not text:
             continue
-            
-        reviews.append({
-            "text": text,
-            "rating": review.get("reviewRating", {}).get("ratingValue"),
-            "date": review.get("datePublished")
-            # "author" KVKK gereği kasıtlı olarak alınmamıştır.
-        })
+
+        reviews.append(
+            {
+                "text": text,
+                "rating": review.get("reviewRating", {}).get("ratingValue"),
+                "date": review.get("datePublished"),
+                # "author" KVKK gereği kasıtlı olarak alınmamıştır.
+            }
+        )
     return reviews
 
 
@@ -153,11 +154,7 @@ def parse_pd_html(html):
         return None
 
     product = state.get("product") or {}
-    price_info = (
-        product.get("merchantListing", {})
-        .get("winnerVariant", {})
-        .get("price", {})
-    )
+    price_info = product.get("merchantListing", {}).get("winnerVariant", {}).get("price", {})
 
     rating_score = product.get("ratingScore", {})
     images = product.get("images") or []
@@ -171,15 +168,12 @@ def parse_pd_html(html):
         "price": price_info.get("discountedPrice", {}).get("value"),
         "currency": price_info.get("currency"),
         "color": None,
-                "gender": product.get("gender", {}).get("name"),
+        "gender": product.get("gender", {}).get("name"),
         "image_url": images[0] if images else None,
         "category_path": hierarchy.split("/") if hierarchy else [],
-        "attributes": {
-            a["key"]["name"]: a["value"]["name"] for a in product.get("attributes", [])
-        },
+        "attributes": {a["key"]["name"]: a["value"]["name"] for a in product.get("attributes", [])},
         "rating": rating_score.get("averageRating"),
         "rating_count": rating_score.get("totalCount"),
         "review_count": rating_score.get("commentCount"),
         "reviews": [],
-
     }

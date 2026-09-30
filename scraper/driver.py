@@ -1,4 +1,3 @@
-
 import random
 import time
 
@@ -32,14 +31,15 @@ def restart_driver(driver):
     """Takılan tarayıcıyı kapatıp yenisini açar."""
     try:
         driver.quit()
-    except Exception:  # noqa: BLE001 - zaten çökmüş tarayıcıdan gelen her hata yutulur
-        pass
+    except Exception as error:
+        print(f"Tarayıcı kapatılamadı ({type(error).__name__}).")
     print("Tarayıcı yeniden başlatılıyor...")
     return create_driver()
 
 
 def polite_sleep():
-    delay = random.uniform(MIN_DELAY, MAX_DELAY)
+    # Rastgelelik nezaket için, güvenlik için değil: sabit aralık robot gibi görünüyor
+    delay = random.uniform(MIN_DELAY, MAX_DELAY)  # noqa: S311
     print(f"{delay:.1f} sn bekleniyor...")
     time.sleep(delay)
 

@@ -1,11 +1,9 @@
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
-from functools import lru_cache
-from functools import lru_cache
 
-
-from scraper.cleaner import COLORS, COLOR_ALIASES, turkish_lower
+from scraper.cleaner import COLOR_ALIASES, COLORS, turkish_lower
 
 CITIES_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "iller.json"
 
@@ -67,6 +65,7 @@ CATEGORY_KEYWORDS = {
     "bot": ["bot", "çizme"],
     "spor-ayakkabi": ["spor ayakkabı", "sneaker", "koşu ayakkabı"],
 }
+
 
 @lru_cache(maxsize=1)
 def load_cities():

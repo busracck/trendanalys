@@ -24,9 +24,10 @@ def percentile(values, ratio):
     return ordered[index]
 
 
-def timed(function):
+def timed(function, *args, **kwargs):
+    """Fonksiyonu çalıştırır, (sonuç, milisaniye) döndürür."""
     started = time.perf_counter()
-    result = function()
+    result = function(*args, **kwargs)
     return result, (time.perf_counter() - started) * 1000
 
 
@@ -44,14 +45,14 @@ def main():
 
         for _ in range(args.tur):
             for query in queries:
-                _, total = timed(lambda: search(session, query, limit=10))
+                _, total = timed(search, session, query, limit=10)
                 steps["toplam"].append(total)
 
                 # Aynı işi adım adım ölçüyoruz
-                parsed, parse_ms = timed(lambda: parse_query(query))
-                vector, embed_ms = timed(lambda: encode_query(parsed["text"]))
+                parsed, parse_ms = timed(parse_query, query)
+                vector, embed_ms = timed(encode_query, parsed["text"])
                 conditions = build_filters(parsed)
-                _, sql_ms = timed(lambda: vector_candidates(session, vector, conditions))
+                _, sql_ms = timed(vector_candidates, session, vector, conditions)
 
                 steps["ayrıştırma"].append(parse_ms)
                 steps["embedding"].append(embed_ms)

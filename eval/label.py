@@ -11,7 +11,6 @@ doğru cevapların büyük kısmı en az bir modun ilk sıralarında çıkar.
 """
 
 import argparse
-from pathlib import Path
 
 import yaml
 from sqlalchemy import select
@@ -94,7 +93,9 @@ def save(items):
 def main():
     parser = argparse.ArgumentParser(description="Test sorgularını etiketler.")
     parser.add_argument("--yeni", help="Yeni sorgu ekle")
-    parser.add_argument("--sadece-yeni", action="store_true", help="Sadece etiketi boş olanları sor")
+    parser.add_argument(
+        "--sadece-yeni", action="store_true", help="Sadece etiketi boş olanları sor"
+    )
     parser.add_argument("--atla", type=int, default=0, help="İlk N sorguyu atla")
     args = parser.parse_args()
 
@@ -117,8 +118,10 @@ def main():
                 item["expected"] = []
                 continue
 
-            print(f"\n  ayrıştırma: {parsed['city']=} {parsed['max_price']=} "
-                  f"{parsed['color']=} {parsed['category']=}")
+            print(
+                f"\n  ayrıştırma: {parsed['city']=} {parsed['max_price']=} "
+                f"{parsed['color']=} {parsed['category']=}"
+            )
             chosen = ask(item["query"], candidates, item["expected"])
             if chosen is None:
                 break

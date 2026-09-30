@@ -64,8 +64,13 @@ console = Console()
 
 
 def run(command):
-    """Komutu çalıştırır, çıktısını döndürür. Hata kodları normal kabul edilir."""
-    result = subprocess.run(command, capture_output=True, text=True, cwd=BASE_DIR)
+    """Komutu çalıştırır, çıktısını döndürür.
+
+    check=False bilerek: ruff ve bandit bulgu bulduğunda sıfırdan farklı kod
+    döndürüyor, bu bizim için hata değil. Komutlar sabit listeler hâlinde
+    veriliyor (shell=False), kullanıcı girdisi komuta karışmıyor.
+    """
+    result = subprocess.run(command, capture_output=True, text=True, cwd=BASE_DIR, check=False)
     return result.stdout.strip()
 
 
@@ -130,9 +135,9 @@ def unique(findings):
     for finding in findings:
         key = (finding.get("file"), finding.get("line"))
         current = best.get(key)
-        if current is None or SEVERITY_ORDER.get(
-            finding.get("severity"), 3
-        ) < SEVERITY_ORDER.get(current.get("severity"), 3):
+        if current is None or SEVERITY_ORDER.get(finding.get("severity"), 3) < SEVERITY_ORDER.get(
+            current.get("severity"), 3
+        ):
             best[key] = finding
     return list(best.values())
 
@@ -151,9 +156,7 @@ def show(findings, lint_output):
     table.add_column("yer", no_wrap=True)
     table.add_column("bulgu")
 
-    for finding in sorted(
-        unique(findings), key=lambda f: SEVERITY_ORDER.get(f.get("severity"), 3)
-    ):
+    for finding in sorted(unique(findings), key=lambda f: SEVERITY_ORDER.get(f.get("severity"), 3)):
         severity = finding.get("severity", "minor")
         location = f"{finding.get('file', '?')}:{finding.get('line', '?')}"
         table.add_row(
